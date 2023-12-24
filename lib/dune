@@ -1,0 +1,4 @@
+(library
+ (name zin)
+ (preprocess (pps ppx_deriving.show ppx_deriving.eq))
+ (libraries fmt ppx_deriving))
