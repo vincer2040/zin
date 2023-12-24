@@ -20,6 +20,7 @@ type token =
   | Arrow
   | Underscore
   | Colon
+  | DoubleColon
   | Dot
   | Range
   | InclusiveRange

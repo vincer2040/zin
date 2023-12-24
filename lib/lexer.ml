@@ -27,10 +27,14 @@ let rec next_token lexer =
      | ';' -> advance lexer, Some Token.Semicolon
      | ',' -> advance lexer, Some Token.Comma
      | '_' -> advance lexer, Some Token.Underscore
-     | ':' -> advance lexer, Some Token.Colon
      | '|' -> advance lexer, Some Token.Bar
      | '<' -> advance lexer, Some Token.Lt
      | '>' -> advance lexer, Some Token.Gt
+     | ':' ->
+       let lexer, tok =
+         if_peeked lexer ':' ~matched:Token.DoubleColon ~default:Token.Colon
+       in
+       advance lexer, Some tok
      | '.' ->
        let lexer, tok =
          if_peeked lexer '.' ~matched:Token.Range ~default:Token.Dot
