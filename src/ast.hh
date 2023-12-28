@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <string>
 #include <variant>
 #include <vector>
@@ -31,8 +32,9 @@ struct expression {
     enum class type {
         Invalid,
         Identifier,
+        Integer,
     } type;
-    std::variant<std::monostate, identifer> data;
+    std::variant<std::monostate, identifer, uint64_t> data;
 };
 
 struct let_statement {
@@ -45,6 +47,7 @@ struct statement {
         Invalid,
         Let,
         Return,
+        Expression,
     } type;
     std::variant<std::monostate, let_statement, expression> data;
 };

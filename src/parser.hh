@@ -5,7 +5,19 @@
 #include <string>
 #include <vector>
 
+#define UNUSED(v) ((void)v)
+
 namespace zinc {
+enum class precedence {
+    Lowest,
+    Equals,
+    LessGreater,
+    Sum,
+    Product,
+    Prefix,
+    Call,
+};
+
 class parser {
   public:
     parser(lexer l);
@@ -21,6 +33,11 @@ class parser {
     statement parse_statement();
     statement parse_let();
     statement parse_return();
+    statement parse_expression_statement();
+
+    expression parse_expression(precedence prec);
+    expression parse_ident_expression();
+    expression parse_int_expression();
 
     void next_token();
     bool inline cur_token_is(tokent type);

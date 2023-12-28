@@ -1,4 +1,6 @@
 #include "parser.hh"
+#include "token.hh"
+#include <cstdint>
 #include <variant>
 
 zinc::parser::parser(lexer l) : l(std::move(l)) {
@@ -27,9 +29,10 @@ zinc::statement zinc::parser::parse_statement() {
     case tokent::Return:
         return parse_return();
     default:
-        break;
+        return parse_expression_statement();
     }
 
+    // todo: unreachable
     return {statement::type::Invalid, std::monostate()};
 }
 
@@ -67,6 +70,45 @@ zinc::statement zinc::parser::parse_return() {
     };
 
     return stmt;
+}
+
+zinc::statement zinc::parser::parse_expression_statement() {
+    expression e = parse_expression(zinc::precedence::Lowest);
+    if (peek_token_is(tokent::Semicolon)) {
+        next_token();
+    }
+    return {statement::type::Expression, std::move(e)};
+}
+
+zinc::expression zinc::parser::parse_expression(zinc::precedence prec) {
+    UNUSED(prec);
+    switch (cur.type) {
+    case tokent::Ident:
+        return parse_ident_expression();
+    case tokent::Int:
+        return parse_int_expression();
+    default: {
+        std::string err =
+            "no prefix parse function for " + std::string(cur.type_to_string());
+        errors.push_back(std::move(err));
+        return {expression::type::Invalid, std::monostate()};
+    }
+    }
+    return {expression::type::Invalid, std::monostate()};
+}
+
+zinc::expression zinc::parser::parse_ident_expression() {
+    std::string name = std::get<std::string>(cur.literal);
+    identifer ident = {std::move(name), data_type::Infer};
+    expression e = {expression::type::Identifier, std::move(ident)};
+    return e;
+}
+
+zinc::expression zinc::parser::parse_int_expression() {
+    std::string num_literal = std::get<std::string>(cur.literal);
+    uint64_t value = std::stoull(num_literal);
+    expression e = {expression::type::Integer, value};
+    return e;
 }
 
 void zinc::parser::next_token() {
