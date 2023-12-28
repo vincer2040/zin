@@ -87,6 +87,10 @@ zinc::expression zinc::parser::parse_expression(zinc::precedence prec) {
         return parse_ident_expression();
     case tokent::Int:
         return parse_int_expression();
+    case tokent::True:
+        return parse_bool_expression(true);
+    case tokent::False:
+        return parse_bool_expression(false);
     default: {
         std::string err =
             "no prefix parse function for " + std::string(cur.type_to_string());
@@ -108,6 +112,11 @@ zinc::expression zinc::parser::parse_int_expression() {
     std::string num_literal = std::get<std::string>(cur.literal);
     uint64_t value = std::stoull(num_literal);
     expression e = {expression::type::Integer, value};
+    return e;
+}
+
+zinc::expression zinc::parser::parse_bool_expression(bool value) {
+    expression e = {expression::type::Boolean, value};
     return e;
 }
 

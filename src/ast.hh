@@ -33,8 +33,9 @@ struct expression {
         Invalid,
         Identifier,
         Integer,
+        Boolean,
     } type;
-    std::variant<std::monostate, identifer, uint64_t> data;
+    std::variant<std::monostate, identifer, uint64_t, bool> data;
 };
 
 struct let_statement {

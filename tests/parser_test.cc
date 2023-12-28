@@ -13,11 +13,23 @@ struct int_test {
     uint64_t exp_value;
 };
 
+struct bool_test {
+    std::string input;
+    bool exp_value;
+};
+
 #define test_int(exp_num, exp)                                                 \
     do {                                                                       \
         EXPECT_EQ(exp.type, zinc::expression::type::Integer);                  \
         uint64_t val = std::get<uint64_t>(exp.data);                           \
         EXPECT_EQ(exp_num, val);                                               \
+    } while (0)
+
+#define test_bool(exp_value, exp)                                              \
+    do {                                                                       \
+        EXPECT_EQ(exp.type, zinc::expression::type::Boolean);                  \
+        bool val = std::get<bool>(exp.data);                                   \
+        EXPECT_EQ(exp_value, val);                                             \
     } while (0)
 
 TEST(Parser, Let) {
@@ -72,8 +84,8 @@ TEST(Parser, IdentExpression) {
 
 TEST(Parser, Integers) {
     int_test tests[] = {
-        { "5;", 5 },
-        { "10;", 10 },
+        {"5;", 5},
+        {"10;", 10},
     };
     size_t i, len = arr_size(tests);
     for (i = 0; i < len; ++i) {
@@ -86,5 +98,24 @@ TEST(Parser, Integers) {
         EXPECT_EQ(stmt.type, zinc::statement::type::Expression);
         auto& exp = std::get<zinc::expression>(stmt.data);
         test_int(t.exp_value, exp);
+    }
+}
+
+TEST(Parser, Boolean) {
+    bool_test tests[] = {
+        {"true;", true},
+        {"false;", false},
+    };
+    size_t i, len = arr_size(tests);
+    for (i = 0; i < len; ++i) {
+        bool_test t = tests[i];
+        zinc::lexer l(std::move(t.input));
+        zinc::parser p(std::move(l));
+        zinc::ast ast = p.parse();
+        EXPECT_EQ(ast.statements.size(), 1);
+        auto& stmt = ast.statements[0];
+        EXPECT_EQ(stmt.type, zinc::statement::type::Expression);
+        auto& exp = std::get<zinc::expression>(stmt.data);
+        test_bool(t.exp_value, exp);
     }
 }
