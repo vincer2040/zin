@@ -24,6 +24,11 @@ add_library(
     src/lexer.cc
 )
 
+add_library(
+    parser
+    src/parser.cc
+)
+
 add_executable(
     zinc
     src/main.cc
@@ -32,4 +37,9 @@ add_executable(
 target_link_libraries(
     lexer
     token
+)
+
+target_link_libraries(
+    parser
+    lexer
 )

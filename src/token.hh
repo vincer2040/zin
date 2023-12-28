@@ -45,7 +45,11 @@ namespace zinc {
         tokent type;
         std::variant<std::monostate, std::string> literal;
         token();
+
+        const char* type_to_string();
     };
 
     token lookup_ident(std::string ident);
+
+    const char* token_type_string(tokent type);
 }

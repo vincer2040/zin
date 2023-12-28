@@ -32,3 +32,81 @@ zinc::token zinc::lookup_ident(std::string ident) {
     tok.literal = std::move(ident);
     return tok;
 }
+
+const char* zinc::token::type_to_string() {
+    return zinc::token_type_string(type);
+}
+
+const char* zinc::token_type_string(tokent type) {
+    switch(type) {
+    case tokent::Illegal:
+        return "Illegal";
+    case tokent::Eof:
+        return "Eof";
+    case tokent::Assign:
+        return "Assign";
+    case tokent::Plus:
+        return "Plus";
+    case tokent::Minus:
+        return "Minus";
+    case tokent::Asterisk:
+        return "Asterisk";
+    case tokent::Slash:
+        return "Slash";
+    case tokent::Semicolon:
+        return "Semicolon";
+    case tokent::Comma:
+        return "Comma";
+    case tokent::Colon:
+        return "Colon";
+    case tokent::Arrow:
+        return "Arrow";
+    case tokent::LParen:
+        return "LParen";
+    case tokent::RParen:
+        return "RParen";
+    case tokent::LSquirly:
+        return "LSquirly";
+    case tokent::RSquirly:
+        return "RSquirly";
+    case tokent::Bang:
+        return "Bang";
+    case tokent::Lt:
+        return "Lt";
+    case tokent::Gt:
+        return "Gt";
+    case tokent::Eq:
+        return "Eq";
+    case tokent::NotEq:
+        return "NotEq";
+    case tokent::Let:
+        return "Let";
+    case tokent::Function:
+        return "Function";
+    case tokent::u8:
+        return "u8";
+    case tokent::u16:
+        return "u16";
+    case tokent::u32:
+        return "u32";
+    case tokent::u64:
+        return "u64";
+    case tokent::i8:
+        return "i8";
+    case tokent::i16:
+        return "i16";
+    case tokent::i32:
+        return "i32";
+    case tokent::i64:
+        return "i64";
+    case tokent::Bool:
+        return "Bool";
+    case tokent::Return:
+        return "Return";
+    case tokent::Ident:
+        return "Ident";
+    case tokent::Int:
+        return "Int";
+    }
+    return nullptr;
+}
