@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <variant>
 #include <vector>
@@ -28,14 +29,26 @@ struct identifer {
     data_type type;
 };
 
+enum class prefix_operator {
+    Bang,
+    Minus,
+};
+
+struct prefix_expression {
+    prefix_operator oper;
+    std::unique_ptr<struct expression> right;
+};
+
 struct expression {
     enum class type {
         Invalid,
         Identifier,
         Integer,
         Boolean,
+        Prefix,
     } type;
-    std::variant<std::monostate, identifer, uint64_t, bool> data;
+    std::variant<std::monostate, identifer, uint64_t, bool, prefix_expression>
+        data;
 };
 
 struct let_statement {

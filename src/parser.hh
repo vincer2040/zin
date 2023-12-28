@@ -39,6 +39,7 @@ class parser {
     expression parse_ident_expression();
     expression parse_int_expression();
     expression parse_bool_expression(bool value);
+    expression parse_prefix_expression(prefix_operator oper);
 
     void next_token();
     bool inline cur_token_is(tokent type);

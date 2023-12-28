@@ -18,18 +18,57 @@ struct bool_test {
     bool exp_value;
 };
 
-#define test_int(exp_num, exp)                                                 \
+struct prefix_test {
+    std::string input;
+    enum class type {
+        Int,
+        Bool,
+    } type;
+    zinc::prefix_operator oper;
+    std::variant<uint64_t, bool> data;
+};
+
+#define check_errors(p)                                                        \
     do {                                                                       \
-        EXPECT_EQ(exp.type, zinc::expression::type::Integer);                  \
-        uint64_t val = std::get<uint64_t>(exp.data);                           \
+        std::vector<std::string>& errs = p.get_errors();                       \
+        if (errs.size() > 0) {                                                 \
+            for (auto& e : errs) {                                             \
+                std::cout << e << '\n';                                        \
+            }                                                                  \
+        }                                                                      \
+        EXPECT_EQ(errs.size(), 0);                                             \
+    } while (0)
+
+#define test_int(exp_num, e)                                                   \
+    do {                                                                       \
+        EXPECT_EQ(e.type, zinc::expression::type::Integer);                    \
+        uint64_t val = std::get<uint64_t>(e.data);                             \
         EXPECT_EQ(exp_num, val);                                               \
     } while (0)
 
-#define test_bool(exp_value, exp)                                              \
+#define test_bool(exp_value, e)                                                \
     do {                                                                       \
-        EXPECT_EQ(exp.type, zinc::expression::type::Boolean);                  \
-        bool val = std::get<bool>(exp.data);                                   \
+        EXPECT_EQ(e.type, zinc::expression::type::Boolean);                    \
+        bool val = std::get<bool>(e.data);                                     \
         EXPECT_EQ(exp_value, val);                                             \
+    } while (0)
+
+#define test_prefix(ptest, got)                                                \
+    do {                                                                       \
+        EXPECT_EQ(got.type, zinc::expression::type::Prefix);                   \
+        auto& prefix = std::get<zinc::prefix_expression>(got.data);            \
+        EXPECT_EQ(ptest.oper, prefix.oper);                                    \
+        auto& right = *prefix.right;                                           \
+        switch (ptest.type) {                                                  \
+        case prefix_test::type::Int: {                                         \
+            uint64_t exp_val = std::get<uint64_t>(ptest.data);                 \
+            test_int(exp_val, right);                                          \
+        } break;                                                               \
+        case prefix_test::type::Bool: {                                        \
+            bool exp_val = std::get<bool>(ptest.data);                         \
+            test_bool(exp_val, right);                                         \
+        } break;                                                               \
+        }                                                                      \
     } while (0)
 
 TEST(Parser, Let) {
@@ -47,6 +86,7 @@ let foobar = 131313;\n\
     zinc::lexer l(std::move(input));
     zinc::parser p(std::move(l));
     zinc::ast ast = p.parse();
+    check_errors(p);
     EXPECT_EQ(ast.statements.size(), 3);
     for (i = 0; i < len; ++i) {
         let_test t = tests[i];
@@ -63,6 +103,7 @@ TEST(Parser, Return) {
     zinc::lexer l(std::move(input));
     zinc::parser p(std::move(l));
     zinc::ast ast = p.parse();
+    check_errors(p);
     EXPECT_EQ(ast.statements.size(), 1);
     auto& stmt = ast.statements[0];
     EXPECT_EQ(stmt.type, zinc::statement::type::Return);
@@ -73,6 +114,7 @@ TEST(Parser, IdentExpression) {
     zinc::lexer l(std::move(input));
     zinc::parser p(std::move(l));
     zinc::ast ast = p.parse();
+    check_errors(p);
     EXPECT_EQ(ast.statements.size(), 1);
     auto& stmt = ast.statements[0];
     EXPECT_EQ(stmt.type, zinc::statement::type::Expression);
@@ -93,6 +135,7 @@ TEST(Parser, Integers) {
         zinc::lexer l(std::move(t.input));
         zinc::parser p(std::move(l));
         zinc::ast ast = p.parse();
+        check_errors(p);
         EXPECT_EQ(ast.statements.size(), 1);
         auto& stmt = ast.statements[0];
         EXPECT_EQ(stmt.type, zinc::statement::type::Expression);
@@ -112,10 +155,41 @@ TEST(Parser, Boolean) {
         zinc::lexer l(std::move(t.input));
         zinc::parser p(std::move(l));
         zinc::ast ast = p.parse();
+        check_errors(p);
         EXPECT_EQ(ast.statements.size(), 1);
         auto& stmt = ast.statements[0];
         EXPECT_EQ(stmt.type, zinc::statement::type::Expression);
         auto& exp = std::get<zinc::expression>(stmt.data);
         test_bool(t.exp_value, exp);
+    }
+}
+
+TEST(Parser, Prefix) {
+    prefix_test tests[] = {
+        {
+            "-5;",
+            prefix_test::type::Int,
+            zinc::prefix_operator::Minus,
+            (uint64_t)5,
+        },
+        {
+            "!true;",
+            prefix_test::type::Bool,
+            zinc::prefix_operator::Bang,
+            true,
+        },
+    };
+    size_t i, len = arr_size(tests);
+    for (i = 0; i < len; ++i) {
+        prefix_test t = tests[i];
+        zinc::lexer l(std::move(t.input));
+        zinc::parser p(std::move(l));
+        zinc::ast ast = p.parse();
+        check_errors(p);
+        EXPECT_EQ(ast.statements.size(), 1);
+        auto& stmt = ast.statements[0];
+        EXPECT_EQ(stmt.type, zinc::statement::type::Expression);
+        auto& exp = std::get<zinc::expression>(stmt.data);
+        test_prefix(t, exp);
     }
 }

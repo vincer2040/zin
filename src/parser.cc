@@ -1,6 +1,8 @@
 #include "parser.hh"
+#include "ast.hh"
 #include "token.hh"
 #include <cstdint>
+#include <memory>
 #include <variant>
 
 zinc::parser::parser(lexer l) : l(std::move(l)) {
@@ -91,6 +93,10 @@ zinc::expression zinc::parser::parse_expression(zinc::precedence prec) {
         return parse_bool_expression(true);
     case tokent::False:
         return parse_bool_expression(false);
+    case tokent::Minus:
+        return parse_prefix_expression(prefix_operator::Minus);
+    case tokent::Bang:
+        return parse_prefix_expression(prefix_operator::Bang);
     default: {
         std::string err =
             "no prefix parse function for " + std::string(cur.type_to_string());
@@ -117,6 +123,16 @@ zinc::expression zinc::parser::parse_int_expression() {
 
 zinc::expression zinc::parser::parse_bool_expression(bool value) {
     expression e = {expression::type::Boolean, value};
+    return e;
+}
+
+zinc::expression
+zinc::parser::parse_prefix_expression(zinc::prefix_operator oper) {
+    next_token();
+    auto right = std::make_unique<expression>(
+        std::move(parse_expression(precedence::Lowest)));
+    prefix_expression pe = {oper, std::move(right)};
+    expression e = {expression::type::Prefix, std::move(pe)};
     return e;
 }
 
