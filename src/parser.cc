@@ -24,6 +24,8 @@ zinc::statement zinc::parser::parse_statement() {
     switch (cur.type) {
     case tokent::Let:
         return parse_let();
+    case tokent::Return:
+        return parse_return();
     default:
         break;
     }
@@ -36,6 +38,8 @@ zinc::statement zinc::parser::parse_let() {
         return {statement::type::Invalid, std::monostate()};
     }
     std::string ident_value = std::get<std::string>(cur.literal);
+
+    // todo: parse type and expression
     while (!cur_token_is(tokent::Semicolon)) {
         next_token();
     }
@@ -46,6 +50,22 @@ zinc::statement zinc::parser::parse_let() {
         {expression::type::Invalid, std::monostate()},
     };
     statement stmt = {statement::type::Let, std::move(let)};
+    return stmt;
+}
+
+zinc::statement zinc::parser::parse_return() {
+    // todo: expression
+    while (!cur_token_is(tokent::Semicolon)) {
+        next_token();
+    }
+
+    zinc::expression e = {expression::type::Invalid, std::monostate()};
+
+    statement stmt = {
+        statement::type::Return,
+        std::move(e),
+    };
+
     return stmt;
 }
 

@@ -32,3 +32,13 @@ let foobar = 131313;\n\
         EXPECT_STREQ(let.ident.name.c_str(), t.exp_ident);
     }
 }
+
+TEST(Parser, Return) {
+    std::string input = "return foobar;";
+    zinc::lexer l(input);
+    zinc::parser p(l);
+    zinc::ast ast = p.parse();
+    EXPECT_EQ(ast.statements.size(), 1);
+    auto& stmt = ast.statements[0];
+    EXPECT_EQ(stmt.type, zinc::statement::type::Return);
+}

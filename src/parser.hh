@@ -20,6 +20,7 @@ class parser {
 
     statement parse_statement();
     statement parse_let();
+    statement parse_return();
 
     void next_token();
     bool inline cur_token_is(tokent type);

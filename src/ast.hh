@@ -44,7 +44,8 @@ struct statement {
     enum class type {
         Invalid,
         Let,
+        Return,
     } type;
-    std::variant<std::monostate, let_statement> data;
+    std::variant<std::monostate, let_statement, expression> data;
 };
 } // namespace zinc
