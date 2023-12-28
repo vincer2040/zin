@@ -36,6 +36,8 @@ namespace zinc {
         i32,
         i64,
         Bool,
+        True,
+        False,
         Return,
         Ident,
         Int,

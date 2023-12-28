@@ -11,6 +11,7 @@ lookup lookups[] = {
     {"i16", zinc::tokent::i16},       {"u32", zinc::tokent::u32},
     {"i32", zinc::tokent::i32},       {"u64", zinc::tokent::u64},
     {"i64", zinc::tokent::i64},       {"let", zinc::tokent::Let},
+    {"true", zinc::tokent::True},     {"false", zinc::tokent::False},
     {"return", zinc::tokent::Return},
 };
 
@@ -38,7 +39,7 @@ const char* zinc::token::type_to_string() {
 }
 
 const char* zinc::token_type_string(tokent type) {
-    switch(type) {
+    switch (type) {
     case tokent::Illegal:
         return "Illegal";
     case tokent::Eof:
@@ -107,6 +108,10 @@ const char* zinc::token_type_string(tokent type) {
         return "Ident";
     case tokent::Int:
         return "Int";
+    case tokent::True:
+        return "True";
+    case tokent::False:
+        return "False";
     }
     return nullptr;
 }
