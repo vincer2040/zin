@@ -152,6 +152,10 @@ expression parser::parse_expression(precedence prec) {
             left =
                 parse_infix_expression(infix_operator::NotEq, std::move(left));
             break;
+        case tokent::LParen:
+            next_token();
+            left = parse_call(std::move(left));
+            break;
         default:
             return left;
         }
@@ -226,11 +230,18 @@ expression parser::parse_function() {
     return {expression::type::Function, std::move(fn)};
 }
 
+expression parser::parse_call(expression function) {
+    auto functionu = std::make_unique<expression>(std::move(function));
+    std::vector<expression> args = parse_function_args();
+    call c = {std::move(functionu), std::move(args)};
+    expression e = {expression::type::Call, std::move(c)};
+    return e;
+}
+
 std::vector<identifier> parser::parse_function_params() {
     std::vector<identifier> params;
     next_token();
     if (cur_token_is(tokent::RParen)) {
-        next_token();
         return params;
     }
     identifier param = parse_identifier();
@@ -255,6 +266,31 @@ std::vector<identifier> parser::parse_function_params() {
     }
     next_token();
     return params;
+}
+
+std::vector<expression> parser::parse_function_args() {
+    std::vector<expression> args;
+    next_token();
+    if (cur_token_is(tokent::RParen)) {
+        return args;
+    }
+    expression a = parse_expression(precedence::Lowest);
+    if (a.type == expression::type::Invalid) {
+        return args;
+    }
+    args.push_back(std::move(a));
+    while (!peek_token_is(tokent::RParen)) {
+        next_token();
+        next_token();
+        expression arg = parse_expression(precedence::Lowest);
+        if (arg.type == expression::type::Invalid) {
+            args.clear();
+            return args;
+        }
+        args.push_back(std::move(arg));
+    }
+    next_token();
+    return args;
 }
 
 block_statement parser::parse_block() {
@@ -335,6 +371,8 @@ precedence parser::precedence_from_tokent(tokent type) {
     case tokent::Asterisk:
     case tokent::Slash:
         return precedence::Product;
+    case tokent::LParen:
+        return precedence::Call;
     default:
         break;
     }

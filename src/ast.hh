@@ -54,11 +54,11 @@ enum class infix_operator {
 
 struct infix_expression {
     infix_operator oper;
-    std::unique_ptr<struct expression> left;
-    std::unique_ptr<struct expression> right;
+    std::unique_ptr<expression> left;
+    std::unique_ptr<expression> right;
 };
 
-using block_statement = std::vector<struct statement>;
+using block_statement = std::vector<statement>;
 
 struct function {
     identifier name;
@@ -66,9 +66,14 @@ struct function {
     block_statement body;
 };
 
+struct call {
+    std::unique_ptr<expression> fn;
+    std::vector<expression> args;
+};
+
 using expression_data =
     std::variant<std::monostate, identifier, uint64_t, bool, prefix_expression,
-                 infix_expression, function>;
+                 infix_expression, function, call>;
 
 struct expression {
     enum class type {
@@ -79,6 +84,7 @@ struct expression {
         Prefix,
         Infix,
         Function,
+        Call,
     } type;
     expression_data data;
     expression() : type(expression::type::Invalid), data(std::monostate()) {}

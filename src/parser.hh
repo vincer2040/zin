@@ -42,9 +42,11 @@ class parser {
     expression parse_prefix_expression(prefix_operator oper);
     expression parse_infix_expression(infix_operator oper, expression left);
     expression parse_function();
+    expression parse_call(expression function);
 
     block_statement parse_block();
     std::vector<identifier> parse_function_params();
+    std::vector<expression> parse_function_args();
     identifier parse_identifier();
     data_type parse_data_type();
 
@@ -59,4 +61,5 @@ class parser {
 
     void peek_error(tokent exp);
 };
+
 } // namespace zinc

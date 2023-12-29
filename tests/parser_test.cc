@@ -355,3 +355,24 @@ TEST(Parser, Functions) {
     auto& body_e = std::get<zinc::expression>(body_stmt.data);
     test_infix(body_test, body_e);
 }
+
+TEST(Parser, Call) {
+    std::string input = "add(1, x + 2);";
+    zinc::lexer l(std::move(input));
+    zinc::parser p(std::move(l));
+    zinc::ast ast = p.parse();
+    check_errors(p);
+    EXPECT_EQ(ast.statements.size(), 1);
+    auto& stmt = ast.statements[0];
+    EXPECT_EQ(stmt.type, zinc::statement::type::Expression);
+    auto& e = std::get<zinc::expression>(stmt.data);
+    EXPECT_EQ(e.type, zinc::expression::type::Call);
+    auto& call = std::get<zinc::call>(e.data);
+    auto& fn = call.fn;
+
+    EXPECT_EQ(fn->type, zinc::expression::type::Identifier);
+    auto& ident = std::get<zinc::identifier>(fn->data);
+    EXPECT_STREQ("add", ident.name.c_str());
+
+    EXPECT_EQ(call.args.size(), 2);
+}
