@@ -41,6 +41,12 @@ class parser {
     expression parse_bool_expression(bool value);
     expression parse_prefix_expression(prefix_operator oper);
     expression parse_infix_expression(infix_operator oper, expression left);
+    expression parse_function();
+
+    block_statement parse_block();
+    std::vector<identifier> parse_function_params();
+    identifier parse_identifier();
+    data_type parse_data_type();
 
     void next_token();
     bool inline cur_token_is(tokent type);

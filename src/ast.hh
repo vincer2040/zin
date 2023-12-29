@@ -12,7 +12,9 @@ struct ast {
 };
 
 enum class data_type {
+    Unkown,
     Infer,
+    Unit,
     u8,
     u16,
     u32,
@@ -24,7 +26,7 @@ enum class data_type {
     Bool,
 };
 
-struct identifer {
+struct identifier {
     std::string name;
     data_type type;
 };
@@ -56,8 +58,17 @@ struct infix_expression {
     std::unique_ptr<struct expression> right;
 };
 
-using expression_data = std::variant<std::monostate, identifer, uint64_t, bool,
-                                     prefix_expression, infix_expression>;
+using block_statement = std::vector<struct statement>;
+
+struct function {
+    identifier name;
+    std::vector<identifier> params;
+    block_statement body;
+};
+
+using expression_data =
+    std::variant<std::monostate, identifier, uint64_t, bool, prefix_expression,
+                 infix_expression, function>;
 
 struct expression {
     enum class type {
@@ -67,6 +78,7 @@ struct expression {
         Boolean,
         Prefix,
         Infix,
+        Function,
     } type;
     expression_data data;
     expression() : type(expression::type::Invalid), data(std::monostate()) {}
@@ -75,7 +87,7 @@ struct expression {
 };
 
 struct let_statement {
-    identifer ident;
+    identifier ident;
     expression e;
 };
 
@@ -88,4 +100,5 @@ struct statement {
     } type;
     std::variant<std::monostate, let_statement, expression> data;
 };
+
 } // namespace zinc

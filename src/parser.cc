@@ -48,7 +48,7 @@ statement parser::parse_let() {
         next_token();
     }
 
-    identifer ident = {std::move(ident_value), data_type::Infer};
+    identifier ident = {std::move(ident_value), data_type::Infer};
     let_statement let = {
         std::move(ident),
         {expression::type::Invalid, std::monostate()},
@@ -101,6 +101,9 @@ expression parser::parse_expression(precedence prec) {
         break;
     case tokent::Bang:
         left = parse_prefix_expression(prefix_operator::Bang);
+        break;
+    case tokent::Function:
+        left = parse_function();
         break;
     default: {
         std::string err =
@@ -158,7 +161,7 @@ expression parser::parse_expression(precedence prec) {
 
 expression parser::parse_ident_expression() {
     std::string name = std::get<std::string>(cur.literal);
-    identifer ident = {std::move(name), data_type::Infer};
+    identifier ident = {std::move(name), data_type::Infer};
     expression e = {expression::type::Identifier, std::move(ident)};
     return e;
 }
@@ -193,6 +196,112 @@ expression parser::parse_infix_expression(infix_operator oper,
     infix_expression infix = {oper, std::move(leftu), std::move(right)};
     expression e = {expression::type::Infix, std::move(infix)};
     return e;
+}
+
+expression parser::parse_function() {
+    next_token();
+    data_type return_type = data_type::Unit;
+    std::string name = std::move(std::get<std::string>(cur.literal));
+    if (!expect_peek((tokent::LParen))) {
+        return {expression::type::Invalid, std::monostate()};
+    }
+    std::vector<identifier> params = parse_function_params();
+    if (peek_token_is(tokent::Arrow)) {
+        next_token();
+        next_token();
+        return_type = parse_data_type();
+        if (return_type == data_type::Unkown) {
+            std::string error = "unkown function return type";
+            errors.push_back(std::move(error));
+            return {expression::type::Invalid, std::monostate()};
+        }
+    }
+    identifier ident = {std::move(name), return_type};
+    if (!expect_peek(tokent::LSquirly)) {
+        return {expression::type::Invalid, std::monostate()};
+    }
+    next_token();
+    block_statement bs = parse_block();
+    function fn = {std::move(ident), std::move(params), std::move(bs)};
+    return {expression::type::Function, std::move(fn)};
+}
+
+std::vector<identifier> parser::parse_function_params() {
+    std::vector<identifier> params;
+    next_token();
+    if (cur_token_is(tokent::RParen)) {
+        next_token();
+        return params;
+    }
+    identifier param = parse_identifier();
+    if (param.type == data_type::Unkown) {
+        std::string error = "function params must have a type";
+        errors.push_back(error);
+        return params;
+    }
+    params.push_back(std::move(param));
+    while (!peek_token_is(tokent::RParen)) {
+        next_token();
+        next_token();
+        identifier p = parse_identifier();
+        if (p.type == data_type::Unkown) {
+            std::string error = "function params must have a type";
+            errors.push_back(error);
+            params.clear();
+            return params;
+        }
+
+        params.push_back(std::move(p));
+    }
+    next_token();
+    return params;
+}
+
+block_statement parser::parse_block() {
+    block_statement bs;
+    while (!cur_token_is(tokent::RSquirly)) {
+        statement stmt = parse_statement();
+        bs.push_back(std::move(stmt));
+        next_token();
+    }
+    return bs;
+}
+
+identifier parser::parse_identifier() {
+    std::string name = std::move(std::get<std::string>(cur.literal));
+    if (!peek_token_is(tokent::Colon)) {
+        return {std::move(name), data_type::Infer};
+    }
+    next_token();
+    next_token();
+    data_type type = parse_data_type();
+    return {std::move(name), type};
+}
+
+data_type parser::parse_data_type() {
+    switch (cur.type) {
+    case tokent::u8:
+        return data_type::u8;
+    case tokent::u16:
+        return data_type::u16;
+    case tokent::u32:
+        return data_type::u32;
+    case tokent::u64:
+        return data_type::u64;
+    case tokent::i8:
+        return data_type::i8;
+    case tokent::i16:
+        return data_type::i16;
+    case tokent::i32:
+        return data_type::i32;
+    case tokent::i64:
+        return data_type::i64;
+    case tokent::Bool:
+        return data_type::Bool;
+    default:
+        break;
+    }
+    return data_type::Unkown;
 }
 
 void parser::next_token() {

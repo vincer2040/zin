@@ -33,10 +33,16 @@ struct infix_test {
     enum class type {
         Int,
         Bool,
+        Ident,
     } type;
     zinc::infix_operator oper;
-    std::variant<uint64_t, bool> left;
-    std::variant<uint64_t, bool> right;
+    std::variant<uint64_t, bool, const char*> left;
+    std::variant<uint64_t, bool, const char*> right;
+};
+
+struct function_param_test {
+    const char* name;
+    zinc::data_type type;
 };
 
 #define check_errors(p)                                                        \
@@ -102,6 +108,16 @@ struct infix_test {
             test_bool(exp_left, left);                                         \
             test_bool(exp_right, right);                                       \
         } break;                                                               \
+        case infix_test::type::Ident: {                                        \
+            const char* exp_left = std::get<const char*>(ptest.left);          \
+            const char* exp_right = std::get<const char*>(ptest.right);        \
+            EXPECT_EQ(left.type, zinc::expression::type::Identifier);          \
+            EXPECT_EQ(right.type, zinc::expression::type::Identifier);         \
+            auto& left_val = std::get<zinc::identifier>(left.data);            \
+            auto& right_val = std::get<zinc::identifier>(right.data);          \
+            EXPECT_STREQ(exp_left, left_val.name.c_str());                     \
+            EXPECT_STREQ(exp_right, right_val.name.c_str());                   \
+        } break;                                                               \
         }                                                                      \
     } while (0)
 
@@ -154,7 +170,7 @@ TEST(Parser, IdentExpression) {
     EXPECT_EQ(stmt.type, zinc::statement::type::Expression);
     auto& exp = std::get<zinc::expression>(stmt.data);
     EXPECT_EQ(exp.type, zinc::expression::type::Identifier);
-    auto& ident = std::get<zinc::identifer>(exp.data);
+    auto& ident = std::get<zinc::identifier>(exp.data);
     EXPECT_STREQ(ident.name.c_str(), "foobar");
 }
 
@@ -299,4 +315,43 @@ TEST(Parser, Infix) {
         auto& e = std::get<zinc::expression>(stmt.data);
         test_infix(t, e);
     }
+}
+
+TEST(Parser, Functions) {
+    std::string input = "fn add(x: i32, y: i32) -> i32 { x + y }";
+    function_param_test params_tests[] = {
+        {"x", zinc::data_type::i32},
+        {"y", zinc::data_type::i32},
+    };
+    infix_test body_test = {
+        "", infix_test::type::Ident, zinc::infix_operator::Plus, "x", "y",
+    };
+    size_t i, params_tests_len = arr_size(params_tests);
+    zinc::lexer l(std::move(input));
+    zinc::parser p(std::move(l));
+    zinc::ast ast = p.parse();
+    check_errors(p);
+    EXPECT_EQ(ast.statements.size(), 1);
+    auto& stmt = ast.statements[0];
+    EXPECT_EQ(stmt.type, zinc::statement::type::Expression);
+    auto& e = std::get<zinc::expression>(stmt.data);
+    EXPECT_EQ(e.type, zinc::expression::type::Function);
+    auto& fn = std::get<zinc::function>(e.data);
+
+    EXPECT_STREQ("add", fn.name.name.c_str());
+    EXPECT_EQ(zinc::data_type::i32, fn.name.type);
+
+    EXPECT_EQ(fn.params.size(), 2);
+    for (i = 0; i < params_tests_len; ++i) {
+        function_param_test t = params_tests[i];
+        auto& param = fn.params[i];
+        EXPECT_STREQ(t.name, param.name.c_str());
+        EXPECT_EQ(t.type, param.type);
+    }
+
+    EXPECT_EQ(fn.body.size(), 1);
+    auto& body_stmt = fn.body[0];
+    EXPECT_EQ(body_stmt.type, zinc::statement::type::Expression);
+    auto& body_e = std::get<zinc::expression>(body_stmt.data);
+    test_infix(body_test, body_e);
 }
