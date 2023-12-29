@@ -41,18 +41,25 @@ statement parser::parse_let() {
     if (!expect_peek(tokent::Ident)) {
         return {statement::type::Invalid, std::monostate()};
     }
-    std::string ident_value = std::get<std::string>(cur.literal);
+    identifier ident = parse_identifier();
 
-    // todo: parse type and expression
-    while (!cur_token_is(tokent::Semicolon)) {
-        next_token();
+    if (!expect_peek(tokent::Assign)) {
+        return {statement::type::Invalid, std::monostate()};
     }
 
-    identifier ident = {std::move(ident_value), data_type::Infer};
+    next_token();
+
+    expression e = parse_expression(precedence::Lowest);
+
+    if (!expect_peek(tokent::Semicolon)) {
+        return {statement::type::Invalid, std::monostate()};
+    }
+
     let_statement let = {
         std::move(ident),
-        {expression::type::Invalid, std::monostate()},
+        std::move(e),
     };
+
     statement stmt = {statement::type::Let, std::move(let)};
     return stmt;
 }

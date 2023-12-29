@@ -6,6 +6,8 @@
 
 struct let_test {
     const char* exp_ident;
+    zinc::data_type exp_type;
+    uint64_t exp_val;
 };
 
 struct int_test {
@@ -125,12 +127,12 @@ TEST(Parser, Let) {
     std::string input = "\
 let foo = 5;\n\
 let bar = 10;\n\
-let foobar = 131313;\n\
+let foobar: i32 = 131313;\n\
 ";
     let_test tests[] = {
-        {"foo"},
-        {"bar"},
-        {"foobar"},
+        {"foo", zinc::data_type::Infer, 5},
+        {"bar", zinc::data_type::Infer, 10},
+        {"foobar", zinc::data_type::i32, 131313},
     };
     size_t i, len = arr_size(tests);
     zinc::lexer l(std::move(input));
@@ -145,6 +147,9 @@ let foobar = 131313;\n\
         EXPECT_EQ(stmt.type, zinc::statement::type::Let);
         zinc::let_statement& let = std::get<zinc::let_statement>(stmt.data);
         EXPECT_STREQ(let.ident.name.c_str(), t.exp_ident);
+        EXPECT_EQ(let.ident.type, t.exp_type);
+        auto& e = let.e;
+        test_int(t.exp_val, e);
     }
 }
 
