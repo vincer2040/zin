@@ -15,6 +15,7 @@ namespace zinc {
         Semicolon,
         Comma,
         Colon,
+        Underscore,
         Arrow,
         LParen,
         RParen,
@@ -39,6 +40,7 @@ namespace zinc {
         True,
         False,
         Return,
+        Match,
         Ident,
         Int,
     };

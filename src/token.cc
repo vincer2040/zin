@@ -6,13 +6,13 @@ struct lookup {
 };
 
 lookup lookups[] = {
-    {"fn", zinc::tokent::Function},   {"u8", zinc::tokent::u8},
-    {"i8", zinc::tokent::i8},         {"u16", zinc::tokent::u16},
-    {"i16", zinc::tokent::i16},       {"u32", zinc::tokent::u32},
-    {"i32", zinc::tokent::i32},       {"u64", zinc::tokent::u64},
-    {"i64", zinc::tokent::i64},       {"let", zinc::tokent::Let},
-    {"true", zinc::tokent::True},     {"false", zinc::tokent::False},
-    {"return", zinc::tokent::Return},
+    {"fn", zinc::tokent::Function}, {"u8", zinc::tokent::u8},
+    {"i8", zinc::tokent::i8},       {"u16", zinc::tokent::u16},
+    {"i16", zinc::tokent::i16},     {"u32", zinc::tokent::u32},
+    {"i32", zinc::tokent::i32},     {"u64", zinc::tokent::u64},
+    {"i64", zinc::tokent::i64},     {"let", zinc::tokent::Let},
+    {"true", zinc::tokent::True},   {"false", zinc::tokent::False},
+    {"match", zinc::tokent::Match}, {"return", zinc::tokent::Return},
 };
 
 size_t lookups_len = sizeof lookups / sizeof lookups[0];
@@ -112,6 +112,10 @@ const char* zinc::token_type_string(tokent type) {
         return "True";
     case tokent::False:
         return "False";
+    case tokent::Match:
+        return "Match";
+    case tokent::Underscore:
+        return "Underscore";
     }
     return nullptr;
 }

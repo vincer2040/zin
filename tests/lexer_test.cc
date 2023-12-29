@@ -74,3 +74,38 @@ TEST(Lexer, OtherTokens) {
         EXPECT_EQ(t.exp_type, tok.type);
     }
 }
+
+TEST(Lexer, Match) {
+    std::string input = "\
+match foo {\
+    1 -> true,\
+    2 -> true,\
+    3 -> true,\
+    _ -> false,\
+}\
+";
+    zinc::lexer l(input);
+    lexer_test tests[] = {
+        {zinc::tokent::Match, nullptr},    {zinc::tokent::Ident, "foo"},
+        {zinc::tokent::LSquirly, nullptr}, {zinc::tokent::Int, "1"},
+        {zinc::tokent::Arrow, nullptr},    {zinc::tokent::True, nullptr},
+        {zinc::tokent::Comma, nullptr},    {zinc::tokent::Int, "2"},
+        {zinc::tokent::Arrow, nullptr},    {zinc::tokent::True, nullptr},
+        {zinc::tokent::Comma, nullptr},    {zinc::tokent::Int, "3"},
+        {zinc::tokent::Arrow, nullptr},    {zinc::tokent::True, nullptr},
+        {zinc::tokent::Comma, nullptr},    {zinc::tokent::Underscore, nullptr},
+        {zinc::tokent::Arrow, nullptr},    {zinc::tokent::False, nullptr},
+        {zinc::tokent::Comma, nullptr},    {zinc::tokent::RSquirly, nullptr},
+        {zinc::tokent::Eof, nullptr},
+    };
+    size_t i, len = arr_size(tests);
+    for (i = 0; i < len; ++i) {
+        lexer_test t = tests[i];
+        zinc::token tok = l.next_token();
+        EXPECT_EQ(t.exp_type, tok.type);
+        if (t.exp_literal != nullptr) {
+            auto literal = std::get<std::string>(tok.literal);
+            EXPECT_STREQ(t.exp_literal, literal.c_str());
+        }
+    }
+}

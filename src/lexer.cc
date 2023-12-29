@@ -49,6 +49,9 @@ zinc::token zinc::lexer::next_token() {
     case ',':
         tok.type = zinc::tokent::Comma;
         break;
+    case '_':
+        tok.type = zinc::tokent::Underscore;
+        break;
     case '(':
         tok.type = zinc::tokent::LParen;
         break;
