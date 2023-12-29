@@ -40,11 +40,16 @@ class parser {
     expression parse_int_expression();
     expression parse_bool_expression(bool value);
     expression parse_prefix_expression(prefix_operator oper);
+    expression parse_infix_expression(infix_operator oper, expression left);
 
     void next_token();
     bool inline cur_token_is(tokent type);
     bool inline peek_token_is(tokent type);
     bool expect_peek(tokent type);
+
+    precedence precedence_from_tokent(tokent type);
+    precedence cur_precedence();
+    precedence peek_precedence();
 
     void peek_error(tokent exp);
 };

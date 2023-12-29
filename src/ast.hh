@@ -39,6 +39,26 @@ struct prefix_expression {
     std::unique_ptr<struct expression> right;
 };
 
+enum class infix_operator {
+    Plus,
+    Minus,
+    Asterisk,
+    Slash,
+    Lt,
+    Gt,
+    Eq,
+    NotEq,
+};
+
+struct infix_expression {
+    infix_operator oper;
+    std::unique_ptr<struct expression> left;
+    std::unique_ptr<struct expression> right;
+};
+
+using expression_data = std::variant<std::monostate, identifer, uint64_t, bool,
+                                     prefix_expression, infix_expression>;
+
 struct expression {
     enum class type {
         Invalid,
@@ -46,9 +66,12 @@ struct expression {
         Integer,
         Boolean,
         Prefix,
+        Infix,
     } type;
-    std::variant<std::monostate, identifer, uint64_t, bool, prefix_expression>
-        data;
+    expression_data data;
+    expression() : type(expression::type::Invalid), data(std::monostate()) {}
+    expression(enum type type, expression_data data)
+        : type(type), data(std::move(data)) {}
 };
 
 struct let_statement {

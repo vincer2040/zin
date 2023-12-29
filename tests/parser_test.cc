@@ -28,6 +28,17 @@ struct prefix_test {
     std::variant<uint64_t, bool> data;
 };
 
+struct infix_test {
+    std::string input;
+    enum class type {
+        Int,
+        Bool,
+    } type;
+    zinc::infix_operator oper;
+    std::variant<uint64_t, bool> left;
+    std::variant<uint64_t, bool> right;
+};
+
 #define check_errors(p)                                                        \
     do {                                                                       \
         std::vector<std::string>& errs = p.get_errors();                       \
@@ -67,6 +78,29 @@ struct prefix_test {
         case prefix_test::type::Bool: {                                        \
             bool exp_val = std::get<bool>(ptest.data);                         \
             test_bool(exp_val, right);                                         \
+        } break;                                                               \
+        }                                                                      \
+    } while (0)
+
+#define test_infix(ptest, got)                                                 \
+    do {                                                                       \
+        EXPECT_EQ(got.type, zinc::expression::type::Infix);                    \
+        auto& infix = std::get<zinc::infix_expression>(got.data);              \
+        EXPECT_EQ(ptest.oper, infix.oper);                                     \
+        auto& left = *infix.left;                                              \
+        auto& right = *infix.right;                                            \
+        switch (ptest.type) {                                                  \
+        case infix_test::type::Int: {                                          \
+            uint64_t exp_left = std::get<uint64_t>(ptest.left);                \
+            uint64_t exp_right = std::get<uint64_t>(ptest.right);              \
+            test_int(exp_left, left);                                          \
+            test_int(exp_right, right);                                        \
+        } break;                                                               \
+        case infix_test::type::Bool: {                                         \
+            bool exp_left = std::get<bool>(ptest.left);                        \
+            bool exp_right = std::get<bool>(ptest.right);                      \
+            test_bool(exp_left, left);                                         \
+            test_bool(exp_right, right);                                       \
         } break;                                                               \
         }                                                                      \
     } while (0)
@@ -191,5 +225,78 @@ TEST(Parser, Prefix) {
         EXPECT_EQ(stmt.type, zinc::statement::type::Expression);
         auto& exp = std::get<zinc::expression>(stmt.data);
         test_prefix(t, exp);
+    }
+}
+
+TEST(Parser, Infix) {
+    infix_test tests[] = {
+        {
+            "5 + 5;",
+            infix_test::type::Int,
+            zinc::infix_operator::Plus,
+            (uint64_t)5,
+            (uint64_t)5,
+        },
+        {
+            "5 - 5;",
+            infix_test::type::Int,
+            zinc::infix_operator::Minus,
+            (uint64_t)5,
+            (uint64_t)5,
+        },
+        {
+            "5 * 5;",
+            infix_test::type::Int,
+            zinc::infix_operator::Asterisk,
+            (uint64_t)5,
+            (uint64_t)5,
+        },
+        {
+            "5 / 5;",
+            infix_test::type::Int,
+            zinc::infix_operator::Slash,
+            (uint64_t)5,
+            (uint64_t)5,
+        },
+        {
+            "5 == 5;",
+            infix_test::type::Int,
+            zinc::infix_operator::Eq,
+            (uint64_t)5,
+            (uint64_t)5,
+        },
+        {
+            "5 != 5;",
+            infix_test::type::Int,
+            zinc::infix_operator::NotEq,
+            (uint64_t)5,
+            (uint64_t)5,
+        },
+        {
+            "5 < 5;",
+            infix_test::type::Int,
+            zinc::infix_operator::Lt,
+            (uint64_t)5,
+            (uint64_t)5,
+        },
+        {
+            "5 > 5;",
+            infix_test::type::Int,
+            zinc::infix_operator::Gt,
+            (uint64_t)5,
+            (uint64_t)5,
+        },
+    };
+    size_t i, len = arr_size(tests);
+    for (i = 0; i < len; ++i) {
+        infix_test t = tests[i];
+        zinc::lexer l(std::move(t.input));
+        zinc::parser p(std::move(l));
+        zinc::ast ast = p.parse();
+        EXPECT_EQ(ast.statements.size(), 1);
+        auto& stmt = ast.statements[0];
+        EXPECT_EQ(stmt.type, zinc::statement::type::Expression);
+        auto& e = std::get<zinc::expression>(stmt.data);
+        test_infix(t, e);
     }
 }
