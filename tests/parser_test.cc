@@ -326,6 +326,22 @@ TEST(Parser, Infix) {
     }
 }
 
+TEST(Parser, GroupedExpression) {
+    infix_test t = {
+        "(5 + 5)",   infix_test::type::Int, zinc::infix_operator::Plus,
+        (uint64_t)5, (uint64_t)5,
+    };
+    zinc::lexer l(std::move(t.input));
+    zinc::parser p(std::move(l));
+    zinc::ast ast = p.parse();
+    check_errors(p);
+    EXPECT_EQ(ast.statements.size(), 1);
+    auto& stmt = ast.statements[0];
+    EXPECT_EQ(stmt.type, zinc::statement::type::Expression);
+    auto& e = std::get<zinc::expression>(stmt.data);
+    test_infix(t, e);
+}
+
 TEST(Parser, Functions) {
     std::string input = "fn add(x: i32, y: i32) -> i32 { x + y }";
     function_param_test params_tests[] = {

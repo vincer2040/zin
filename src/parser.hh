@@ -41,6 +41,7 @@ class parser {
     expression parse_bool_expression(bool value);
     expression parse_prefix_expression(prefix_operator oper);
     expression parse_infix_expression(infix_operator oper, expression left);
+    expression parse_group();
     expression parse_function();
     expression parse_call(expression function);
 

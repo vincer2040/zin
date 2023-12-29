@@ -109,6 +109,9 @@ expression parser::parse_expression(precedence prec) {
     case tokent::Bang:
         left = parse_prefix_expression(prefix_operator::Bang);
         break;
+    case tokent::LParen:
+        left = parse_group();
+        break;
     case tokent::Function:
         left = parse_function();
         break;
@@ -206,6 +209,15 @@ expression parser::parse_infix_expression(infix_operator oper,
     auto right = std::make_unique<expression>(parse_expression(prec));
     infix_expression infix = {oper, std::move(leftu), std::move(right)};
     expression e = {expression::type::Infix, std::move(infix)};
+    return e;
+}
+
+expression parser::parse_group() {
+    next_token();
+    expression e = parse_expression(precedence::Lowest);
+    if (!expect_peek(tokent::RParen)) {
+        return {expression::type::Invalid, std::monostate()};
+    }
     return e;
 }
 
