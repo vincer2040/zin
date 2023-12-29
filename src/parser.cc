@@ -2,6 +2,7 @@
 #include "ast.hh"
 #include "token.hh"
 #include <cstdint>
+#include <exception>
 #include <memory>
 #include <variant>
 
@@ -182,7 +183,16 @@ expression parser::parse_ident_expression() {
 
 expression parser::parse_int_expression() {
     std::string num_literal = std::get<std::string>(cur.literal);
-    uint64_t value = std::stoull(num_literal);
+    uint64_t value;
+
+    try {
+        value = std::stoull(num_literal);
+    } catch (std::exception& _) {
+        std::string err = "invalid number " + num_literal;
+        errors.push_back(err);
+        return {expression::type::Invalid, std::monostate()};
+    }
+
     expression e = {expression::type::Integer, value};
     return e;
 }
