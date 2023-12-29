@@ -65,12 +65,12 @@ statement parser::parse_let() {
 }
 
 statement parser::parse_return() {
-    // todo: expression
-    while (!cur_token_is(tokent::Semicolon)) {
-        next_token();
-    }
+    next_token();
+    expression e = parse_expression(precedence::Lowest);
 
-    expression e = {expression::type::Invalid, std::monostate()};
+    if (!expect_peek(tokent::Semicolon)) {
+        return {statement::type::Invalid, std::monostate()};
+    }
 
     statement stmt = {
         statement::type::Return,

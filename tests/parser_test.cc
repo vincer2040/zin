@@ -162,6 +162,10 @@ TEST(Parser, Return) {
     EXPECT_EQ(ast.statements.size(), 1);
     auto& stmt = ast.statements[0];
     EXPECT_EQ(stmt.type, zinc::statement::type::Return);
+    auto& e = std::get<zinc::expression>(stmt.data);
+    EXPECT_EQ(e.type, zinc::expression::type::Identifier);
+    auto& ident = std::get<zinc::identifier>(e.data);
+    EXPECT_STREQ("foobar", ident.name.c_str());
 }
 
 TEST(Parser, IdentExpression) {
