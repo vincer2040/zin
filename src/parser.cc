@@ -3,7 +3,9 @@
 #include "token.hh"
 #include <cstdint>
 #include <exception>
+#include <iostream>
 #include <memory>
+#include <optional>
 #include <variant>
 
 namespace zinc {
@@ -112,6 +114,9 @@ expression parser::parse_expression(precedence prec) {
         break;
     case tokent::LParen:
         left = parse_group();
+        break;
+    case tokent::Match:
+        left = parse_match();
         break;
     case tokent::Function:
         left = parse_function();
@@ -231,6 +236,20 @@ expression parser::parse_group() {
     return e;
 }
 
+expression parser::parse_match() {
+    next_token();
+    auto expr = std::make_unique<expression>(
+        std::move(parse_expression(precedence::Lowest)));
+    if (!expect_peek(tokent::LSquirly)) {
+        return {expression::type::Invalid, std::monostate()};
+    }
+    next_token();
+    std::vector<match_branch> branches = parse_match_branches();
+    match_expression match = {std::move(expr), std::move(branches)};
+    expression e = {expression::type::Match, std::move(match)};
+    return e;
+}
+
 expression parser::parse_function() {
     next_token();
     data_type return_type = data_type::Unit;
@@ -265,6 +284,16 @@ expression parser::parse_call(expression function) {
     call c = {std::move(functionu), std::move(args)};
     expression e = {expression::type::Call, std::move(c)};
     return e;
+}
+
+block_statement parser::parse_block() {
+    block_statement bs;
+    while (!cur_token_is(tokent::RSquirly)) {
+        statement stmt = parse_statement();
+        bs.push_back(std::move(stmt));
+        next_token();
+    }
+    return bs;
 }
 
 std::vector<identifier> parser::parse_function_params() {
@@ -308,7 +337,7 @@ std::vector<expression> parser::parse_function_args() {
         return args;
     }
     args.push_back(std::move(a));
-    while (!peek_token_is(tokent::RParen)) {
+    while (peek_token_is(tokent::Comma)) {
         next_token();
         next_token();
         expression arg = parse_expression(precedence::Lowest);
@@ -322,14 +351,56 @@ std::vector<expression> parser::parse_function_args() {
     return args;
 }
 
-block_statement parser::parse_block() {
-    block_statement bs;
-    while (!cur_token_is(tokent::RSquirly)) {
-        statement stmt = parse_statement();
-        bs.push_back(std::move(stmt));
-        next_token();
+std::vector<match_branch> parser::parse_match_branches() {
+    std::vector<match_branch> branches;
+    if (cur_token_is(tokent::RSquirly)) {
+        return branches;
     }
-    return bs;
+    std::optional<match_branch> branch = parse_match_branch();
+    if (branch.has_value()) {
+        branches.push_back(std::move(*branch));
+    }
+    while (peek_token_is(tokent::Comma)) {
+        next_token();
+        next_token();
+        std::optional<match_branch> b = parse_match_branch();
+        if (!b.has_value()) {
+            branches.clear();
+            return branches;
+        }
+        branches.push_back(std::move(*b));
+    }
+    next_token();
+    return branches;
+}
+
+std::optional<match_branch> parser::parse_match_branch() {
+    match_branch_expr_type expr_type;
+    std::variant<std::monostate, expression> expr;
+    match_branch_result_type result_type;
+    std::variant<expression, block_statement> result;
+    if (cur_token_is(tokent::Underscore)) {
+        expr_type = match_branch_expr_type::Wildcard;
+        expr = std::monostate();
+    } else {
+        expr_type = match_branch_expr_type::Expression;
+        expr = std::move(parse_expression(precedence::Lowest));
+    }
+    if (!expect_peek(tokent::Arrow)) {
+        return std::nullopt;
+    }
+    next_token();
+    if (cur_token_is(tokent::LSquirly)) {
+        next_token();
+        result_type = match_branch_result_type::Block;
+        result = parse_block();
+    } else {
+        result_type = match_branch_result_type::Expression;
+        result = std::move(parse_expression(precedence::Lowest));
+    }
+    match_branch branch = {expr_type, result_type, std::move(expr),
+                           std::move(result)};
+    return branch;
 }
 
 identifier parser::parse_identifier() {

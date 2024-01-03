@@ -2,6 +2,7 @@
 
 #include "ast.hh"
 #include "lexer.hh"
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -42,12 +43,16 @@ class parser {
     expression parse_prefix_expression(prefix_operator oper);
     expression parse_infix_expression(infix_operator oper, expression left);
     expression parse_group();
+    expression parse_match();
     expression parse_function();
     expression parse_call(expression function);
 
     block_statement parse_block();
     std::vector<identifier> parse_function_params();
     std::vector<expression> parse_function_args();
+    std::vector<match_branch> parse_match_branches();
+
+    std::optional<match_branch> parse_match_branch();
     identifier parse_identifier();
     data_type parse_data_type();
 

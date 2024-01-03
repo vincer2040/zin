@@ -60,6 +60,11 @@ struct infix_expression {
 
 using block_statement = std::vector<statement>;
 
+struct match_expression {
+    std::unique_ptr<expression> expr;
+    std::vector<struct match_branch> branches;
+};
+
 struct function {
     identifier name;
     std::vector<identifier> params;
@@ -73,7 +78,7 @@ struct call {
 
 using expression_data =
     std::variant<std::monostate, identifier, uint64_t, bool, prefix_expression,
-                 infix_expression, function, call>;
+                 infix_expression, match_expression, function, call>;
 
 struct expression {
     enum class type {
@@ -83,6 +88,7 @@ struct expression {
         Boolean,
         Prefix,
         Infix,
+        Match,
         Function,
         Call,
     } type;
@@ -90,6 +96,23 @@ struct expression {
     expression() : type(expression::type::Invalid), data(std::monostate()) {}
     expression(enum type type, expression_data data)
         : type(type), data(std::move(data)) {}
+};
+
+enum class match_branch_expr_type {
+    Wildcard,
+    Expression,
+};
+
+enum class match_branch_result_type {
+    Expression,
+    Block,
+};
+
+struct match_branch {
+    match_branch_expr_type expr_type;
+    match_branch_result_type result_type;
+    std::variant<std::monostate, expression> expr;
+    std::variant<expression, block_statement> result;
 };
 
 struct let_statement {

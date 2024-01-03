@@ -42,6 +42,11 @@ struct infix_test {
     std::variant<uint64_t, bool, const char*> right;
 };
 
+struct match_branch_test {
+    zinc::match_branch_expr_type expr_type;
+    zinc::match_branch_result_type result_type;
+};
+
 struct function_param_test {
     const char* name;
     zinc::data_type type;
@@ -340,6 +345,63 @@ TEST(Parser, GroupedExpression) {
     EXPECT_EQ(stmt.type, zinc::statement::type::Expression);
     auto& e = std::get<zinc::expression>(stmt.data);
     test_infix(t, e);
+}
+
+TEST(Parser, Match) {
+    std::string input = "\
+match foo {\
+    1 -> true,\
+    2 -> true,\
+    3 -> true,\
+    _ -> {\
+        foo == 4\
+    }\
+}";
+
+    match_branch_test branch_tests[] = {
+        {
+            zinc::match_branch_expr_type::Expression,
+            zinc::match_branch_result_type::Expression,
+        },
+        {
+            zinc::match_branch_expr_type::Expression,
+            zinc::match_branch_result_type::Expression,
+        },
+        {
+            zinc::match_branch_expr_type::Expression,
+            zinc::match_branch_result_type::Expression,
+        },
+        {
+            zinc::match_branch_expr_type::Wildcard,
+            zinc::match_branch_result_type::Block,
+        },
+    };
+
+    size_t i, branch_tests_len = arr_size(branch_tests);
+
+    zinc::lexer l(std::move(input));
+    zinc::parser p(std::move(l));
+    zinc::ast ast = p.parse();
+    check_errors(p);
+    EXPECT_EQ(ast.statements.size(), 1);
+    auto& stmt = ast.statements[0];
+    EXPECT_EQ(stmt.type, zinc::statement::type::Expression);
+    auto& e = std::get<zinc::expression>(stmt.data);
+    EXPECT_EQ(e.type, zinc::expression::type::Match);
+
+    auto& match = std::get<zinc::match_expression>(e.data);
+    EXPECT_EQ(match.expr->type, zinc::expression::type::Identifier);
+    auto& expr_ident = std::get<zinc::identifier>(match.expr->data);
+    EXPECT_STREQ("foo", expr_ident.name.c_str());
+
+    EXPECT_EQ(match.branches.size(), 4);
+
+    for (i = 0; i < branch_tests_len; ++i) {
+        match_branch_test t = branch_tests[i];
+        zinc::match_branch& branch = match.branches[i];
+        EXPECT_EQ(t.expr_type, branch.expr_type);
+        EXPECT_EQ(t.result_type, branch.result_type);
+    }
 }
 
 TEST(Parser, Functions) {
