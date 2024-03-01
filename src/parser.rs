@@ -1,7 +1,7 @@
 use std::error::Error;
 
 use crate::{
-    ast::{Ast, Expression, Infix, InfixOperator, Prefix, PrefixOperator, Statement},
+    ast::{Ast, Expression, Infix, InfixOperator, LetStatement, Prefix, PrefixOperator, Statement},
     lexer::Lexer,
     token::Token,
 };
@@ -78,8 +78,41 @@ impl<'a> Parser<'a> {
 
     fn parse_statement(&mut self) -> Result<Statement, ParserError> {
         match self.cur {
+            Token::Let => self.parse_let(),
+            Token::Return => self.parse_return(),
             _ => self.parse_expression_statement(),
         }
+    }
+
+    fn parse_let(&mut self) -> Result<Statement, ParserError> {
+        self.next_token();
+        let name = match std::mem::take(&mut self.cur) {
+            Token::Ident(ident) => ident,
+            _ => {
+                let err = format!("expected Ident, got {:#?}", self.cur);
+                return Err(err.into());
+            }
+        };
+        if !self.expect_peek(Token::Assign) {
+            let err = format!("expectd peek token to be Assign, got {:#?}", self.peek);
+            return Err(err.into());
+        }
+        self.next_token();
+        let value = self.parse_expression(Precedence::Lowest)?;
+        let ls = LetStatement { name, value };
+        if self.peek == Token::Semicolon {
+            self.next_token();
+        }
+        return Ok(Statement::LetStatement(ls));
+    }
+
+    fn parse_return(&mut self) -> Result<Statement, ParserError> {
+        self.next_token();
+        let value = self.parse_expression(Precedence::Lowest)?;
+        if self.peek == Token::Semicolon {
+            self.next_token();
+        }
+        return Ok(Statement::ReturnStatement(value));
     }
 
     fn parse_expression_statement(&mut self) -> Result<Statement, ParserError> {
@@ -187,13 +220,21 @@ impl<'a> Parser<'a> {
         std::mem::swap(&mut self.cur, &mut self.peek);
         self.peek = self.l.next_token();
     }
+
+    fn expect_peek(&mut self, tok: Token) -> bool {
+        if self.peek != tok {
+            return false;
+        }
+        self.next_token();
+        return true;
+    }
 }
 
 #[cfg(test)]
 mod test {
 
     use crate::{
-        ast::{Expression, InfixOperator, PrefixOperator, Statement},
+        ast::{Expression, InfixOperator, LetStatement, PrefixOperator, Statement},
         lexer::Lexer,
     };
 
@@ -217,6 +258,11 @@ mod test {
         right: T,
     }
 
+    struct LetTest {
+        name: &'static str,
+        value: Expression,
+    }
+
     fn check_errors(p: &Parser) {
         let errs = p.errors();
         for e in errs {
@@ -232,6 +278,15 @@ mod test {
             _ => unreachable!(),
         };
         return e;
+    }
+
+    fn assert_let(stmt: &Statement) -> &LetStatement {
+        assert!(matches!(stmt, Statement::LetStatement(_)));
+        let ls = match &stmt {
+            Statement::LetStatement(ls) => ls,
+            _ => unreachable!(),
+        };
+        return ls;
     }
 
     fn assert_ident(e: &Expression, exp: &str) {
@@ -433,6 +488,45 @@ mod test {
             let stmt = &res.statements[0];
             let e = assert_expression(&stmt);
             assert_int_infix(&e, test.oper, test.left, test.right);
+        }
+    }
+
+    #[test]
+    fn test_let_statement() {
+        let input = "
+        let foo = 5;
+        let bar = 10;
+        let foobar = foo;
+        ";
+        let exps = [
+            LetTest {
+                name: "foo",
+                value: Expression::Int(5),
+            },
+            LetTest {
+                name: "bar",
+                value: Expression::Int(10),
+            },
+            LetTest {
+                name: "foobar",
+                value: Expression::Ident("foo".into()),
+            },
+        ];
+
+        let l = Lexer::new(input.as_bytes());
+        let mut p = Parser::new(l);
+        let res = p.parse();
+        check_errors(&p);
+        assert_eq!(res.statements.len(), 3);
+        for (i, exp) in exps.iter().enumerate() {
+            let cur = &res.statements[i];
+            let ls = assert_let(&cur);
+            assert_eq!(ls.name, exp.name);
+            match &exp.value {
+                Expression::Int(i) => assert_int(&ls.value, *i),
+                Expression::Ident(i) => assert_ident(&ls.value, &i),
+                _ => unreachable!(),
+            };
         }
     }
 }
