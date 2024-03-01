@@ -1,7 +1,7 @@
 use std::error::Error;
 
 use crate::{
-    ast::{Expression, Program, Statement},
+    ast::{Ast, Expression, Prefix, PrefixOperator, Statement},
     lexer::Lexer,
     token::Token,
 };
@@ -28,7 +28,7 @@ impl<'a> Parser<'a> {
         return p;
     }
 
-    pub fn parse(&mut self) -> Program {
+    pub fn parse(&mut self) -> Ast {
         let mut stmts = Vec::new();
 
         while self.cur != Token::Eof {
@@ -36,16 +36,16 @@ impl<'a> Parser<'a> {
             match stmt {
                 Ok(s) => {
                     stmts.push(s);
-                    self.next_token();
                 }
                 Err(e) => {
                     let s = e.to_string();
                     self.errors.push(s);
                 }
             }
+            self.next_token();
         }
 
-        return Program { statements: stmts };
+        return Ast { statements: stmts };
     }
 
     pub fn errors(&self) -> &Vec<String> {
@@ -75,9 +75,24 @@ impl<'a> Parser<'a> {
                 let val: i64 = int.parse()?;
                 exp = Expression::Int(val);
             }
-            _ => todo!(),
+            Token::Minus => exp = self.parse_prefix(PrefixOperator::Minus)?,
+            Token::Bang => exp = self.parse_prefix(PrefixOperator::Bang)?,
+            _ => {
+                let err = format!("unknown token {:#?}", cur);
+                return Err(err.into());
+            }
         };
         return Ok(exp);
+    }
+
+    fn parse_prefix(&mut self, oper: PrefixOperator) -> Result<Expression, ParserError> {
+        self.next_token();
+        let right = self.parse_expression()?;
+        let prefix = Prefix {
+            oper,
+            right: std::rc::Rc::new(right),
+        };
+        return Ok(Expression::Prefix(prefix));
     }
 
     fn next_token(&mut self) {
@@ -88,12 +103,19 @@ impl<'a> Parser<'a> {
 
 #[cfg(test)]
 mod test {
+
     use crate::{
-        ast::{Expression, LetStatement, Statement},
+        ast::{Expression, LetStatement, PrefixOperator, Statement},
         lexer::Lexer,
     };
 
     use super::Parser;
+
+    struct PrefixTest<T> {
+        input: &'static str,
+        oper: PrefixOperator,
+        exp: T,
+    }
 
     fn check_errors(p: &Parser) {
         let errs = p.errors();
@@ -139,6 +161,21 @@ mod test {
         assert_eq!(*int, exp);
     }
 
+    fn assert_int_prefix(e: &Expression, oper: PrefixOperator, exp: i64) {
+        assert!(matches!(e, Expression::Prefix(_)));
+        let prefix = match e {
+            Expression::Prefix(p) => p,
+            _ => unreachable!(),
+        };
+        assert_eq!(prefix.oper, oper);
+        assert!(matches!(*prefix.right, Expression::Int(_)));
+        let right = match *prefix.right {
+            Expression::Int(i) => i,
+            _ => unreachable!(),
+        };
+        assert_eq!(right, exp);
+    }
+
     #[test]
     fn test_ident() {
         let input = "foobar;";
@@ -168,6 +205,33 @@ mod test {
             let e = assert_expression(&stmt);
             let exp = exps[i];
             assert_int(&e, exp);
+        }
+    }
+
+    #[test]
+    fn test_prefix() {
+        let tests = [
+            PrefixTest {
+                input: "-5",
+                oper: PrefixOperator::Minus,
+                exp: 5,
+            },
+            PrefixTest {
+                input: "!15",
+                oper: PrefixOperator::Bang,
+                exp: 15,
+            },
+        ];
+
+        for test in tests {
+            let l = Lexer::new(test.input.as_bytes());
+            let mut p = Parser::new(l);
+            let res = p.parse();
+            check_errors(&p);
+            assert_eq!(res.statements.len(), 1);
+            let stmt = &res.statements[0];
+            let e = assert_expression(stmt);
+            assert_int_prefix(&e, test.oper, test.exp);
         }
     }
 }
