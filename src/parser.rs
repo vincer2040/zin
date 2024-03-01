@@ -99,6 +99,8 @@ impl<'a> Parser<'a> {
                 let val: i64 = int.parse()?;
                 exp = Expression::Int(val);
             }
+            Token::True => exp = Expression::Boolean(true),
+            Token::False => exp = Expression::Boolean(false),
             Token::Minus => exp = self.parse_prefix(PrefixOperator::Minus)?,
             Token::Bang => exp = self.parse_prefix(PrefixOperator::Bang)?,
             _ => {
@@ -197,6 +199,11 @@ mod test {
 
     use super::Parser;
 
+    struct BoolTest {
+        input: &'static str,
+        exp: bool,
+    }
+
     struct PrefixTest<T> {
         input: &'static str,
         oper: PrefixOperator,
@@ -245,6 +252,15 @@ mod test {
         assert_eq!(*int, exp);
     }
 
+    fn assert_bool(e: &Expression, exp: bool) {
+        assert!(matches!(e, Expression::Boolean(_)));
+        let b = match e {
+            Expression::Boolean(i) => i,
+            _ => unreachable!(),
+        };
+        assert_eq!(*b, exp);
+    }
+
     fn assert_int_prefix(e: &Expression, oper: PrefixOperator, exp: i64) {
         assert!(matches!(e, Expression::Prefix(_)));
         let prefix = match e {
@@ -282,6 +298,31 @@ mod test {
         let stmt = &res.statements[0];
         let e = assert_expression(stmt);
         assert_ident(e, "foobar");
+    }
+
+    #[test]
+    fn test_boolean() {
+        let tests = [
+            BoolTest {
+                input: "true;",
+                exp: true,
+            },
+            BoolTest {
+                input: "false;",
+                exp: false,
+            },
+        ];
+
+        for test in tests {
+            let l = Lexer::new(test.input.as_bytes());
+            let mut p = Parser::new(l);
+            let res = p.parse();
+            check_errors(&p);
+            assert_eq!(res.statements.len(), 1);
+            let stmt = &res.statements[0];
+            let e = assert_expression(&stmt);
+            assert_bool(e, test.exp);
+        }
     }
 
     #[test]

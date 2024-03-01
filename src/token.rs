@@ -21,6 +21,8 @@ pub enum Token {
     Let,
     Function,
     Return,
+    True,
+    False,
     Ident(String),
     Int(String),
 }
@@ -30,6 +32,8 @@ impl Into<Token> for String {
         match self.as_str() {
             "fn" => Token::Function,
             "let" => Token::Let,
+            "true" => Token::True,
+            "false" => Token::False,
             "return" => Token::Return,
             _ => Token::Ident(self),
         }

@@ -43,6 +43,7 @@ pub struct Infix {
 }
 
 pub enum Expression {
+    Boolean(bool),
     Ident(String),
     Int(i64),
     Prefix(Prefix),
