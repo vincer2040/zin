@@ -1,9 +1,12 @@
 use std::io::{stdin, stdout, Write};
 
 use lexer::Lexer;
-use token::Token;
 
+use crate::parser::Parser;
+
+mod ast;
 mod lexer;
+mod parser;
 mod token;
 mod util;
 
@@ -16,12 +19,18 @@ fn main() -> std::io::Result<()> {
         if line == "exit\n" {
             break;
         }
-        let mut l = Lexer::new(line.as_bytes());
-        let mut tok = l.next_token();
-        while tok != Token::Eof {
-            println!("{:#?}", tok);
-            tok = l.next_token();
-        }
+        let l = Lexer::new(line.as_bytes());
+        let mut p = Parser::new(l);
+        let _ = p.parse();
+        check_errors(&p);
     }
     Ok(())
+}
+
+fn check_errors(p: &Parser) -> bool {
+    let errs = p.errors();
+    for e in errs {
+        println!("{}", e);
+    }
+    return errs.len() == 0;
 }

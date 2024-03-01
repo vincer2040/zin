@@ -1,4 +1,3 @@
-
 #[derive(Debug, PartialEq, Eq)]
 pub enum Token {
     Eof,
@@ -30,7 +29,13 @@ impl Into<Token> for String {
             "fn" => Token::Function,
             "let" => Token::Let,
             "return" => Token::Return,
-            _ => Token::Ident(self)
+            _ => Token::Ident(self),
         }
+    }
+}
+
+impl Default for Token {
+    fn default() -> Self {
+        Token::Illegal
     }
 }
