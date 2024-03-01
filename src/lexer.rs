@@ -42,6 +42,8 @@ impl<'a> Lexer<'a> {
             }
             b'+' => tok = Token::Plus,
             b'-' => tok = Token::Minus,
+            b'*' => tok = Token::Asterisk,
+            b'/' => tok = Token::Slash,
             b'<' => tok = Token::Lt,
             b'>' => tok = Token::Gt,
             b';' => tok = Token::Semicolon,

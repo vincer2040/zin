@@ -1,10 +1,34 @@
 use std::error::Error;
 
 use crate::{
-    ast::{Ast, Expression, Prefix, PrefixOperator, Statement},
+    ast::{Ast, Expression, Infix, InfixOperator, Prefix, PrefixOperator, Statement},
     lexer::Lexer,
     token::Token,
 };
+
+#[derive(PartialOrd, Ord, PartialEq, Eq)]
+enum Precedence {
+    Lowest,
+    Equals,
+    LessGreater,
+    Sum,
+    Product,
+    Prefix,
+    Call,
+}
+
+impl Precedence {
+    pub fn new(tok: &Token) -> Self {
+        match tok {
+            Token::Eq | Token::NotEq => Self::Equals,
+            Token::Lt | Token::Gt => Self::LessGreater,
+            Token::Plus | Token::Minus => Self::Sum,
+            Token::Asterisk | Token::Slash => Self::Product,
+            Token::LParen => Self::Call,
+            _ => Self::Lowest,
+        }
+    }
+}
 
 pub struct Parser<'a> {
     l: Lexer<'a>,
@@ -59,16 +83,16 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expression_statement(&mut self) -> Result<Statement, ParserError> {
-        let exp = self.parse_expression()?;
+        let exp = self.parse_expression(Precedence::Lowest)?;
         if self.peek == Token::Semicolon {
             self.next_token();
         }
         return Ok(Statement::ExpressionStatement(exp));
     }
 
-    fn parse_expression(&mut self) -> Result<Expression, ParserError> {
+    fn parse_expression(&mut self, prec: Precedence) -> Result<Expression, ParserError> {
         let cur = std::mem::take(&mut self.cur);
-        let exp: Expression;
+        let mut exp: Expression;
         match cur {
             Token::Ident(ident) => exp = Expression::Ident(ident),
             Token::Int(int) => {
@@ -82,17 +106,79 @@ impl<'a> Parser<'a> {
                 return Err(err.into());
             }
         };
+
+        while self.peek != Token::Semicolon && prec < self.peek_precedence() {
+            match self.peek {
+                Token::Plus => {
+                    self.next_token();
+                    exp = self.parse_infix(InfixOperator::Plus, exp)?;
+                }
+                Token::Minus => {
+                    self.next_token();
+                    exp = self.parse_infix(InfixOperator::Minus, exp)?;
+                }
+                Token::Asterisk => {
+                    self.next_token();
+                    exp = self.parse_infix(InfixOperator::Asterisk, exp)?;
+                }
+                Token::Slash => {
+                    self.next_token();
+                    exp = self.parse_infix(InfixOperator::Slash, exp)?;
+                }
+                Token::Lt => {
+                    self.next_token();
+                    exp = self.parse_infix(InfixOperator::Lt, exp)?;
+                }
+                Token::Gt => {
+                    self.next_token();
+                    exp = self.parse_infix(InfixOperator::Gt, exp)?;
+                }
+                Token::Eq => {
+                    self.next_token();
+                    exp = self.parse_infix(InfixOperator::Eq, exp)?;
+                }
+                Token::NotEq => {
+                    self.next_token();
+                    exp = self.parse_infix(InfixOperator::NotEq, exp)?;
+                }
+                _ => return Ok(exp),
+            }
+        }
         return Ok(exp);
     }
 
     fn parse_prefix(&mut self, oper: PrefixOperator) -> Result<Expression, ParserError> {
         self.next_token();
-        let right = self.parse_expression()?;
+        let right = self.parse_expression(Precedence::Prefix)?;
         let prefix = Prefix {
             oper,
             right: std::rc::Rc::new(right),
         };
         return Ok(Expression::Prefix(prefix));
+    }
+
+    fn parse_infix(
+        &mut self,
+        oper: InfixOperator,
+        left: Expression,
+    ) -> Result<Expression, ParserError> {
+        let cur_prec = self.cur_precedence();
+        self.next_token();
+        let right = self.parse_expression(cur_prec)?;
+        let infix = Infix {
+            oper,
+            left: std::rc::Rc::new(left),
+            right: std::rc::Rc::new(right),
+        };
+        return Ok(Expression::Infix(infix));
+    }
+
+    fn cur_precedence(&self) -> Precedence {
+        return Precedence::new(&self.cur);
+    }
+
+    fn peek_precedence(&self) -> Precedence {
+        return Precedence::new(&self.peek);
     }
 
     fn next_token(&mut self) {
@@ -105,7 +191,7 @@ impl<'a> Parser<'a> {
 mod test {
 
     use crate::{
-        ast::{Expression, LetStatement, PrefixOperator, Statement},
+        ast::{Expression, InfixOperator, PrefixOperator, Statement},
         lexer::Lexer,
     };
 
@@ -115,6 +201,13 @@ mod test {
         input: &'static str,
         oper: PrefixOperator,
         exp: T,
+    }
+
+    struct InfixTest<T> {
+        input: &'static str,
+        oper: InfixOperator,
+        left: T,
+        right: T,
     }
 
     fn check_errors(p: &Parser) {
@@ -132,15 +225,6 @@ mod test {
             _ => unreachable!(),
         };
         return e;
-    }
-
-    fn assert_let(stmt: &Statement) -> &LetStatement {
-        assert!(matches!(stmt, Statement::ExpressionStatement(_)));
-        let ls = match &stmt {
-            Statement::LetStatement(l) => l,
-            _ => unreachable!(),
-        };
-        return ls;
     }
 
     fn assert_ident(e: &Expression, exp: &str) {
@@ -174,6 +258,17 @@ mod test {
             _ => unreachable!(),
         };
         assert_eq!(right, exp);
+    }
+
+    fn assert_int_infix(e: &Expression, oper: InfixOperator, left: i64, right: i64) {
+        assert!(matches!(e, Expression::Infix(_)));
+        let infix = match e {
+            Expression::Infix(inf) => inf,
+            _ => unreachable!(),
+        };
+        assert_eq!(infix.oper, oper);
+        assert_int(&infix.left, left);
+        assert_int(&infix.right, right);
     }
 
     #[test]
@@ -232,6 +327,71 @@ mod test {
             let stmt = &res.statements[0];
             let e = assert_expression(stmt);
             assert_int_prefix(&e, test.oper, test.exp);
+        }
+    }
+
+    #[test]
+    fn test_infix() {
+        let tests = [
+            InfixTest {
+                input: "5 + 5;",
+                oper: InfixOperator::Plus,
+                left: 5,
+                right: 5,
+            },
+            InfixTest {
+                input: "5 - 5;",
+                oper: InfixOperator::Minus,
+                left: 5,
+                right: 5,
+            },
+            InfixTest {
+                input: "5 * 5",
+                oper: InfixOperator::Asterisk,
+                left: 5,
+                right: 5,
+            },
+            InfixTest {
+                input: "5 / 5;",
+                oper: InfixOperator::Slash,
+                left: 5,
+                right: 5,
+            },
+            InfixTest {
+                input: "5 < 5;",
+                oper: InfixOperator::Lt,
+                left: 5,
+                right: 5,
+            },
+            InfixTest {
+                input: "5 > 5;",
+                oper: InfixOperator::Gt,
+                left: 5,
+                right: 5,
+            },
+            InfixTest {
+                input: "5 == 5;",
+                oper: InfixOperator::Eq,
+                left: 5,
+                right: 5,
+            },
+            InfixTest {
+                input: "5 != 5;",
+                oper: InfixOperator::NotEq,
+                left: 5,
+                right: 5,
+            },
+        ];
+
+        for test in tests {
+            let l = Lexer::new(test.input.as_bytes());
+            let mut p = Parser::new(l);
+            let res = p.parse();
+            check_errors(&p);
+            assert_eq!(res.statements.len(), 1);
+            let stmt = &res.statements[0];
+            let e = assert_expression(&stmt);
+            assert_int_infix(&e, test.oper, test.left, test.right);
         }
     }
 }

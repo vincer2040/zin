@@ -24,8 +24,27 @@ pub struct Prefix {
     pub right: std::rc::Rc<Expression>,
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum InfixOperator {
+    Plus,
+    Minus,
+    Asterisk,
+    Slash,
+    Lt,
+    Gt,
+    Eq,
+    NotEq,
+}
+
+pub struct Infix {
+    pub oper: InfixOperator,
+    pub left: std::rc::Rc<Expression>,
+    pub right: std::rc::Rc<Expression>,
+}
+
 pub enum Expression {
     Ident(String),
     Int(i64),
     Prefix(Prefix),
+    Infix(Infix),
 }
