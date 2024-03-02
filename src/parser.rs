@@ -136,6 +136,7 @@ impl<'a> Parser<'a> {
             Token::False => exp = Expression::Boolean(false),
             Token::Minus => exp = self.parse_prefix(PrefixOperator::Minus)?,
             Token::Bang => exp = self.parse_prefix(PrefixOperator::Bang)?,
+            Token::LParen => exp = self.parse_group()?,
             _ => {
                 let err = format!("unknown token {:#?}", cur);
                 return Err(err.into());
@@ -180,6 +181,16 @@ impl<'a> Parser<'a> {
             }
         }
         return Ok(exp);
+    }
+
+    fn parse_group(&mut self) -> Result<Expression, ParserError> {
+        self.next_token();
+        let e = self.parse_expression(Precedence::Lowest)?;
+        if !self.expect_peek(Token::RParen) {
+            let err = format!("expected peek token to be RParen, got {:#?}", self.peek);
+            return Err(err.into());
+        }
+        return Ok(e);
     }
 
     fn parse_prefix(&mut self, oper: PrefixOperator) -> Result<Expression, ParserError> {
