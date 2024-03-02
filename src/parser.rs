@@ -274,6 +274,11 @@ mod test {
         value: Expression,
     }
 
+    struct PrecedenceTest {
+        input: &'static str,
+        exp: &'static str,
+    }
+
     fn check_errors(p: &Parser) {
         let errs = p.errors();
         for e in errs {
@@ -538,6 +543,72 @@ mod test {
                 Expression::Ident(i) => assert_ident(&ls.value, &i),
                 _ => unreachable!(),
             };
+        }
+    }
+
+    #[test]
+    fn operator_precedence() {
+        let tests = [
+            PrecedenceTest {
+                input: "-a * b",
+                exp: "((-a) * b)",
+            },
+            PrecedenceTest {
+                input: "!-a",
+                exp: "(!(-a))",
+            },
+            PrecedenceTest {
+                input: "a + b + c",
+                exp: "((a + b) + c)",
+            },
+            PrecedenceTest {
+                input: "a + b - c",
+                exp: "((a + b) - c)",
+            },
+            PrecedenceTest {
+                input: "a * b * c",
+                exp: "((a * b) * c)",
+            },
+            PrecedenceTest {
+                input: "a * b / c",
+                exp: "((a * b) / c)",
+            },
+            PrecedenceTest {
+                input: "a + b / c",
+                exp: "(a + (b / c))",
+            },
+            PrecedenceTest {
+                input: "a + b * c + d / e - f",
+                exp: "(((a + (b * c)) + (d / e)) - f)",
+            },
+            PrecedenceTest {
+                input: "3 + 4; -5 * 5",
+                exp: "(3 + 4)((-5) * 5)",
+            },
+            PrecedenceTest {
+                input: "5 > 4 == 3 < 4",
+                exp: "((5 > 4) == (3 < 4))",
+            },
+            PrecedenceTest {
+                input: "5 < 4 != 3 > 4",
+                exp: "((5 < 4) != (3 > 4))",
+            },
+            PrecedenceTest {
+                input: "3 + 4 * 5 == 3 * 1 + 4 * 5",
+                exp: "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))",
+            },
+            PrecedenceTest {
+                input: "3 + 4 * 5 == 3 * 1 + 4 * 5",
+                exp: "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))",
+            },
+        ];
+        for test in tests {
+            let l = Lexer::new(test.input.as_bytes());
+            let mut p = Parser::new(l);
+            let res = p.parse();
+            check_errors(&p);
+            let s = res.to_string();
+            assert_eq!(s, test.exp);
         }
     }
 }
