@@ -21,8 +21,10 @@ fn main() -> std::io::Result<()> {
         }
         let l = Lexer::new(line.as_bytes());
         let mut p = Parser::new(l);
-        let _ = p.parse();
+        let ast = p.parse();
         check_errors(&p);
+        let s = ast.to_string();
+        println!("{}", s);
     }
     Ok(())
 }
