@@ -601,6 +601,42 @@ mod test {
                 input: "3 + 4 * 5 == 3 * 1 + 4 * 5",
                 exp: "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))",
             },
+            PrecedenceTest {
+                input: "true",
+                exp: "true",
+            },
+            PrecedenceTest {
+                input: "false",
+                exp: "false",
+            },
+            PrecedenceTest {
+                input: "3 > 5 == false",
+                exp: "((3 > 5) == false)",
+            },
+            PrecedenceTest {
+                input: "3 < 5 == true",
+                exp: "((3 < 5) == true)",
+            },
+            PrecedenceTest {
+                input: "1 + (2 + 3) + 4",
+                exp: "((1 + (2 + 3)) + 4)",
+            },
+            PrecedenceTest {
+                input: "(5 + 5) * 2",
+                exp: "((5 + 5) * 2)",
+            },
+            PrecedenceTest {
+                input: "2 / (5 + 5)",
+                exp: "(2 / (5 + 5))",
+            },
+            PrecedenceTest {
+                input: "-(5 + 5)",
+                exp: "(-(5 + 5))",
+            },
+            PrecedenceTest {
+                input: "!(true == true)",
+                exp: "(!(true == true))",
+            },
         ];
         for test in tests {
             let l = Lexer::new(test.input.as_bytes());
