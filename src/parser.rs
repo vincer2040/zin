@@ -2,7 +2,7 @@ use std::error::Error;
 
 use crate::{
     ast::{
-        Ast, Block, Expression, Function, Infix, InfixOperator, LetStatement, Prefix,
+        Ast, Block, Expression, Function, IfExpression, Infix, InfixOperator, LetStatement, Prefix,
         PrefixOperator, Statement,
     },
     lexer::Lexer,
@@ -140,6 +140,7 @@ impl<'a> Parser<'a> {
             Token::Minus => exp = self.parse_prefix(PrefixOperator::Minus)?,
             Token::Bang => exp = self.parse_prefix(PrefixOperator::Bang)?,
             Token::LParen => exp = self.parse_group()?,
+            Token::If => exp = self.parse_if_expression()?,
             Token::Function => exp = self.parse_function()?,
             _ => {
                 let err = format!("unknown token {:#?}", cur);
@@ -221,6 +222,35 @@ impl<'a> Parser<'a> {
             right: std::rc::Rc::new(right),
         };
         return Ok(Expression::Infix(infix));
+    }
+
+    fn parse_if_expression(&mut self) -> Result<Expression, ParserError> {
+        self.next_token();
+        let cond = self.parse_expression(Precedence::Lowest)?;
+        if !self.expect_peek(Token::LSquirly) {
+            let err = format!("expected LSquirly, got {:#?}", self.peek);
+            return Err(err.into());
+        }
+        let conseq = self.parse_block()?;
+        let mut alt = None;
+        if self.peek == Token::Else {
+            self.next_token();
+            if !self.expect_peek(Token::LSquirly) {
+                let err = format!("expected LSquirly, got {:#?}", self.peek);
+                return Err(err.into());
+            }
+            let alt_body = self.parse_block()?;
+            alt = Some(alt_body);
+        }
+
+        let if_expression = IfExpression {
+            cond: std::rc::Rc::new(cond),
+            consequence: conseq,
+            alternative: alt,
+        };
+
+        let res = Expression::IfExpression(if_expression);
+        return Ok(res);
     }
 
     fn parse_function(&mut self) -> Result<Expression, ParserError> {
@@ -670,6 +700,47 @@ mod test {
             _ => unreachable!(),
         };
         assert_ident_infix(&ret, InfixOperator::Plus, "x", "y");
+    }
+
+    #[test]
+    fn test_if_else() {
+        let input = "
+            if x < y {
+                return x;
+            } else {
+                return y;
+            }
+        ";
+        let l = Lexer::new(input.as_bytes());
+        let mut p = Parser::new(l);
+        let res = p.parse();
+        assert_eq!(res.statements.len(), 1);
+        let stmt = &res.statements[0];
+        let exp = assert_expression(&stmt);
+        assert!(matches!(exp, Expression::IfExpression(_)));
+        let if_exp = match exp {
+            Expression::IfExpression(e) => e,
+            _ => unreachable!(),
+        };
+        assert_ident_infix(&if_exp.cond, InfixOperator::Lt, "x", "y");
+        assert_eq!(if_exp.consequence.block.len(), 1);
+        let conseq_stmt = &if_exp.consequence.block[0];
+        assert!(matches!(conseq_stmt, Statement::ReturnStatement(_)));
+        let conseq_ret = match &conseq_stmt {
+            Statement::ReturnStatement(rs) => rs,
+            _ => unreachable!(),
+        };
+        assert_ident(&conseq_ret, "x");
+        assert!(matches!(if_exp.alternative, Some(_)));
+        let alt = if_exp.alternative.as_ref().unwrap();
+        assert_eq!(alt.block.len(), 1);
+        let alt_stmt = &alt.block[0];
+        assert!(matches!(alt_stmt, Statement::ReturnStatement(_)));
+        let alt_ret = match &alt_stmt {
+            Statement::ReturnStatement(rs) => rs,
+            _ => unreachable!(),
+        };
+        assert_ident(&alt_ret, "y");
     }
 
     #[test]

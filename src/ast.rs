@@ -46,6 +46,12 @@ pub struct Block {
     pub block: Vec<Statement>,
 }
 
+pub struct IfExpression {
+    pub cond: std::rc::Rc<Expression>,
+    pub consequence: Block,
+    pub alternative: Option<Block>,
+}
+
 pub struct Function {
     pub name: String,
     pub args: Vec<String>,
@@ -58,6 +64,7 @@ pub enum Expression {
     Int(i64),
     Prefix(Prefix),
     Infix(Infix),
+    IfExpression(IfExpression),
     Function(Function),
 }
 
@@ -107,6 +114,7 @@ impl ToString for Expression {
             Expression::Prefix(prefix) => prefix.to_string(),
             Expression::Infix(infix) => infix.to_string(),
             Expression::Function(func) => func.to_string(),
+            Expression::IfExpression(if_expression) => if_expression.to_string(),
         }
     }
 }
@@ -142,6 +150,24 @@ impl ToString for Infix {
         }
         res += &self.right.to_string();
         res += ")";
+        return res;
+    }
+}
+
+impl ToString for IfExpression {
+    fn to_string(&self) -> String {
+        let mut res = String::new();
+        res += "if(";
+        res += &self.cond.to_string();
+        res += ")";
+        res += &self.consequence.to_string();
+        match &self.alternative {
+            Some(body) => {
+                res += "else";
+                res += &body.to_string();
+            },
+            None => (),
+        };
         return res;
     }
 }
