@@ -3,7 +3,7 @@ use std::ops::Deref;
 use crate::{
     ast::{Ast, Block, Expression, IfExpression, InfixOperator, PrefixOperator, Statement},
     environment::Environment,
-    object::{Object, ObjectType},
+    object::{Function, Object, ObjectType},
 };
 
 const TRUE: Object = Object::Bool(true);
@@ -79,7 +79,41 @@ fn eval_expression(e: &Expression, env: &mut Environment) -> Object {
             return eval_infix(&infix.oper, left, right);
         }
         Expression::IfExpression(if_exp) => eval_if_expression(if_exp, env),
-        _ => todo!(),
+        Expression::Function(func) => {
+            let name = &func.name;
+            let body = &func.body;
+            let params = &func.params;
+            let function = Function {
+                name: name.to_owned(),
+                params: params.to_owned(),
+                body: body.to_owned(),
+                env: env.clone(),
+            };
+            let obj = Object::Function(function);
+            env.set(name.to_owned(), obj);
+            return NULL;
+        }
+        Expression::Call(call) => {
+            let func_obj = match env.get(&call.name) {
+                Some(o) => o.clone(),
+                None => {
+                    let err = format!("identifier not found: {}", call.name);
+                    return Object::Error(err);
+                }
+            };
+            let args = eval_expressions(&call.args, env);
+            if args.len() == 1 && args[0].is_error() {
+                return (&args[0]).to_owned();
+            }
+            let func = match func_obj {
+                Object::Function(f) => f,
+                _ => {
+                    let err = format!("not a function: {}", func_obj.get_type().to_string());
+                    return Object::Error(err);
+                }
+            };
+            return apply_function(func, args);
+        }
     }
 }
 
@@ -150,6 +184,41 @@ fn eval_block(block: &Block, env: &mut Environment) -> Object {
         if let Object::Return(_) = &res {
             return res;
         }
+    }
+    return res;
+}
+
+fn apply_function(func: Function, args: Vec<Object>) -> Object {
+    let mut extended = extend_function_env(&func, args);
+    let res = eval_block(&func.body, &mut extended);
+    return unwrap_return_value(res);
+}
+
+fn unwrap_return_value(obj: Object) -> Object {
+    if let Object::Return(r) = obj {
+        return r.deref().to_owned();
+    }
+    return obj;
+}
+
+fn extend_function_env(func: &Function, args: Vec<Object>) -> Environment {
+    let mut env = Environment::new_enclosed((&func.env).to_owned());
+    for (i, param) in func.params.iter().enumerate() {
+        env.set(param.to_string(), (&args[i]).to_owned());
+    }
+    return env;
+}
+
+fn eval_expressions(es: &Vec<Expression>, env: &mut Environment) -> Vec<Object> {
+    let mut res = Vec::new();
+    for e in es {
+        let o = eval_expression(e, env);
+        if o.is_error() {
+            res.clear();
+            res.push(o);
+            return res;
+        }
+        res.push(o);
     }
     return res;
 }
@@ -595,6 +664,37 @@ mod test {
             Test {
                 input: "let a = 5; let b = a; let c = a + b + 5; c;",
                 expected: 15,
+            },
+        ];
+
+        for test in tests {
+            let res = test_eval(test.input);
+            test_int(&res, test.expected);
+        }
+    }
+
+    #[test]
+    fn test_function_application() {
+        let tests = [
+            Test {
+                input: "fn identity(x) { x; }; identity(5);",
+                expected: 5,
+            },
+            Test {
+                input: "fn identity(x) { return x; }; identity(5);",
+                expected: 5,
+            },
+            Test {
+                input: "fn double(x) { x * 2; }; double(5);",
+                expected: 10,
+            },
+            Test {
+                input: "fn add(x, y) { x + y; }; add(5, 5);",
+                expected: 10,
+            },
+            Test {
+                input: "fn add(x, y) { x + y; }; add(5 + 5, add(5, 5));",
+                expected: 20,
             },
         ];
 

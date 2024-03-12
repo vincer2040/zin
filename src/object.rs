@@ -1,3 +1,5 @@
+use crate::{ast::Block, environment::Environment};
+
 #[derive(PartialEq, Eq)]
 pub enum ObjectType {
     Null,
@@ -5,6 +7,15 @@ pub enum ObjectType {
     Bool,
     Return,
     Error,
+    Function,
+}
+
+#[derive(Clone, PartialEq, Eq)]
+pub struct Function {
+    pub name: String,
+    pub params: Vec<String>,
+    pub body: Block,
+    pub env: Environment,
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -14,6 +25,7 @@ pub enum Object {
     Bool(bool),
     Return(Box<Object>),
     Error(String),
+    Function(Function),
 }
 
 impl Object {
@@ -24,6 +36,7 @@ impl Object {
             Object::Bool(_) => ObjectType::Bool,
             Object::Return(_) => ObjectType::Return,
             Object::Error(_) => ObjectType::Error,
+            Object::Function(_) => ObjectType::Function,
         }
     }
 
@@ -34,6 +47,22 @@ impl Object {
             Object::Bool(val) => val.to_string(),
             Object::Return(val) => val.inspect(),
             Object::Error(val) => val.to_owned(),
+            Object::Function(val) => {
+                let mut res = String::new();
+                res += "fn ";
+                res += &val.name;
+                res += "(";
+                for (i, param) in val.params.iter().enumerate() {
+                    res += &param;
+                    if i != val.params.len() - 1 {
+                        res += ", ";
+                    }
+                }
+                res += ") {\n";
+                res += &val.body.to_string();
+                res += "\n}";
+                return res;
+            },
         }
     }
 
@@ -56,6 +85,7 @@ impl ToString for ObjectType {
             ObjectType::Bool => "BOOLEAN".to_string(),
             ObjectType::Return => "RETURN".to_string(),
             ObjectType::Error => "ERROR".to_string(),
+            ObjectType::Function => "FUNCTION".to_string(),
         }
     }
 }

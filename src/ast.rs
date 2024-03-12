@@ -2,29 +2,32 @@ pub struct Ast {
     pub statements: Vec<Statement>,
 }
 
+#[derive(Clone, PartialEq, Eq)]
 pub enum Statement {
     LetStatement(LetStatement),
     ReturnStatement(Expression),
     ExpressionStatement(Expression),
 }
 
+#[derive(Clone, PartialEq, Eq)]
 pub struct LetStatement {
     pub name: String,
     pub value: Expression,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PrefixOperator {
     Minus,
     Bang,
 }
 
+#[derive(Clone, PartialEq, Eq)]
 pub struct Prefix {
     pub oper: PrefixOperator,
     pub right: std::rc::Rc<Expression>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum InfixOperator {
     Plus,
     Minus,
@@ -36,33 +39,39 @@ pub enum InfixOperator {
     NotEq,
 }
 
+#[derive(Clone, PartialEq, Eq)]
 pub struct Infix {
     pub oper: InfixOperator,
     pub left: std::rc::Rc<Expression>,
     pub right: std::rc::Rc<Expression>,
 }
 
+#[derive(Clone, PartialEq, Eq)]
 pub struct Block {
     pub block: Vec<Statement>,
 }
 
+#[derive(Clone, PartialEq, Eq)]
 pub struct IfExpression {
     pub cond: std::rc::Rc<Expression>,
     pub consequence: Block,
     pub alternative: Option<Block>,
 }
 
+#[derive(Clone, PartialEq, Eq)]
 pub struct FunctionExpression {
     pub name: String,
     pub params: Vec<String>,
     pub body: Block,
 }
 
+#[derive(Clone, PartialEq, Eq)]
 pub struct Call {
     pub name: String,
     pub args: Vec<Expression>,
 }
 
+#[derive(Clone, PartialEq, Eq)]
 pub enum Expression {
     Boolean(bool),
     Ident(String),
