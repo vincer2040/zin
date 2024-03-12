@@ -140,6 +140,21 @@ impl ToString for Prefix {
     }
 }
 
+impl ToString for InfixOperator {
+    fn to_string(&self) -> String {
+        match self {
+            InfixOperator::Plus => "+".to_string(),
+            InfixOperator::Minus => "-".to_string(),
+            InfixOperator::Asterisk => "*".to_string(),
+            InfixOperator::Slash => "/".to_string(),
+            InfixOperator::Lt => "<".to_string(),
+            InfixOperator::Gt => ">".to_string(),
+            InfixOperator::Eq => "==".to_string(),
+            InfixOperator::NotEq => "!=".to_string(),
+        }
+    }
+}
+
 impl ToString for Infix {
     fn to_string(&self) -> String {
         let mut res = String::new();

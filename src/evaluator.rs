@@ -17,6 +17,9 @@ fn eval_statements(stmts: &Vec<Statement>) -> Object {
     let mut res = Object::default();
     for stmt in stmts {
         res = eval_statement(&stmt);
+        if res.is_error() {
+            return res;
+        }
         if let Object::Return(r) = &res {
             return r.deref().to_owned();
         }
@@ -26,7 +29,13 @@ fn eval_statements(stmts: &Vec<Statement>) -> Object {
 
 fn eval_statement(stmt: &Statement) -> Object {
     match stmt {
-        Statement::ReturnStatement(e) => Object::Return(Box::new(eval_expression(&e))),
+        Statement::ReturnStatement(e) => {
+            let res = eval_expression(&e);
+            if res.is_error() {
+                return res;
+            }
+            Object::Return(Box::new(res))
+        }
         Statement::ExpressionStatement(e) => eval_expression(&e),
         _ => todo!(),
     }
@@ -38,11 +47,20 @@ fn eval_expression(e: &Expression) -> Object {
         Expression::Boolean(val) => native_bool_to_boolean_object(*val),
         Expression::Prefix(prefix) => {
             let right = eval_expression(&prefix.right);
+            if right.is_error() {
+                return right;
+            }
             return eval_prefix(&prefix.oper, right);
         }
         Expression::Infix(infix) => {
             let left = eval_expression(&infix.left);
+            if left.is_error() {
+                return left;
+            }
             let right = eval_expression(&infix.right);
+            if right.is_error() {
+                return right;
+            }
             return eval_infix(&infix.oper, left, right);
         }
         Expression::IfExpression(if_exp) => eval_if_expression(if_exp),
@@ -69,17 +87,35 @@ fn eval_infix(oper: &InfixOperator, left: Object, right: Object) -> Object {
         };
         return eval_int_infix(oper, lval, rval);
     }
+    if left.get_type() != right.get_type() {
+        let err = format!(
+            "type mismatch: {} {} {}",
+            left.get_type().to_string(),
+            oper.to_string(),
+            right.get_type().to_string()
+        );
+        return Object::Error(err);
+    }
     if *oper == InfixOperator::Eq {
         return native_bool_to_boolean_object(left == right);
     }
     if *oper == InfixOperator::NotEq {
         return native_bool_to_boolean_object(left != right);
     }
-    return NULL;
+    let err = format!(
+        "unknown operator: {} {} {}",
+        left.get_type().to_string(),
+        oper.to_string(),
+        right.get_type().to_string()
+    );
+    return Object::Error(err);
 }
 
 fn eval_if_expression(if_exp: &IfExpression) -> Object {
     let cond = eval_expression(&if_exp.cond);
+    if cond.is_error() {
+        return cond;
+    }
     if is_truthy(&cond) {
         return eval_block(&if_exp.consequence);
     }
@@ -93,6 +129,9 @@ fn eval_block(block: &Block) -> Object {
     let mut res = Object::default();
     for stmt in &block.block {
         res = eval_statement(&stmt);
+        if res.is_error() {
+            return res;
+        }
         if let Object::Return(_) = &res {
             return res;
         }
@@ -134,7 +173,10 @@ fn eval_bang(right: Object) -> Object {
 fn eval_minus_prefix(right: Object) -> Object {
     let right_val = match right {
         Object::Int(v) => v,
-        _ => return NULL,
+        _ => {
+            let err = format!("unknown operator: -{}", right.get_type().to_string());
+            return Object::Error(err);
+        }
     };
     return Object::Int(-right_val);
 }
@@ -193,6 +235,15 @@ mod test {
 
     fn test_null(got: &Object) {
         assert!(matches!(got, Object::Null));
+    }
+
+    fn test_error(got: &Object, exp: &str) {
+        assert!(matches!(got, Object::Error(_)));
+        let e = match got {
+            Object::Error(e) => e,
+            _ => unreachable!(),
+        };
+        assert_eq!(e, exp);
     }
 
     #[test]
@@ -457,6 +508,53 @@ mod test {
         for test in tests {
             let res = test_eval(test.input);
             test_int(&res, test.expected);
+        }
+    }
+
+    #[test]
+    fn test_error_handling() {
+        let tests = [
+            Test {
+                input: "5 + true;",
+                expected: "type mismatch: INTEGER + BOOLEAN",
+            },
+            Test {
+                input: "5 + true; 5;",
+                expected: "type mismatch: INTEGER + BOOLEAN",
+            },
+            Test {
+                input: "-true",
+                expected: "unknown operator: -BOOLEAN",
+            },
+            Test {
+                input: "true + false;",
+                expected: "unknown operator: BOOLEAN + BOOLEAN",
+            },
+            Test {
+                input: "5; true + false; 5",
+                expected: "unknown operator: BOOLEAN + BOOLEAN",
+            },
+            Test {
+                input: "if (10 > 1) { true + false; }",
+                expected: "unknown operator: BOOLEAN + BOOLEAN",
+            },
+            Test {
+                input: "
+                if (10 > 1) {
+                    if (10 > 1) {
+                        return true + false;
+                    }
+                    return 1;
+                }
+                ",
+                expected: "unknown operator: BOOLEAN + BOOLEAN",
+            },
+        ];
+
+        for (i, test) in tests.iter().enumerate() {
+            println!("{}", i);
+            let res = test_eval(test.input);
+            test_error(&res, test.expected);
         }
     }
 }

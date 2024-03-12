@@ -4,6 +4,7 @@ pub enum ObjectType {
     Int,
     Bool,
     Return,
+    Error,
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -12,6 +13,7 @@ pub enum Object {
     Int(i64),
     Bool(bool),
     Return(Box<Object>),
+    Error(String),
 }
 
 impl Object {
@@ -21,6 +23,7 @@ impl Object {
             Object::Int(_) => ObjectType::Int,
             Object::Bool(_) => ObjectType::Bool,
             Object::Return(_) => ObjectType::Return,
+            Object::Error(_) => ObjectType::Error,
         }
     }
 
@@ -30,12 +33,29 @@ impl Object {
             Object::Int(val) => val.to_string(),
             Object::Bool(val) => val.to_string(),
             Object::Return(val) => val.inspect(),
+            Object::Error(val) => val.to_owned(),
         }
+    }
+
+    pub fn is_error(&self) -> bool {
+        return matches!(self.get_type(), ObjectType::Error);
     }
 }
 
 impl Default for Object {
     fn default() -> Self {
         Object::Null
+    }
+}
+
+impl ToString for ObjectType {
+    fn to_string(&self) -> String {
+        match self {
+            ObjectType::Null => "NULL".to_string(),
+            ObjectType::Int => "INTEGER".to_string(),
+            ObjectType::Bool => "BOOLEAN".to_string(),
+            ObjectType::Return => "RETURN".to_string(),
+            ObjectType::Error => "ERROR".to_string(),
+        }
     }
 }
