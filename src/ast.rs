@@ -52,7 +52,7 @@ pub struct IfExpression {
     pub alternative: Option<Block>,
 }
 
-pub struct Function {
+pub struct FunctionExpression {
     pub name: String,
     pub params: Vec<String>,
     pub body: Block,
@@ -70,7 +70,7 @@ pub enum Expression {
     Prefix(Prefix),
     Infix(Infix),
     IfExpression(IfExpression),
-    Function(Function),
+    Function(FunctionExpression),
     Call(Call),
 }
 
@@ -194,7 +194,7 @@ impl ToString for IfExpression {
     }
 }
 
-impl ToString for Function {
+impl ToString for FunctionExpression {
     fn to_string(&self) -> String {
         let mut res = String::new();
         res += "fn ";

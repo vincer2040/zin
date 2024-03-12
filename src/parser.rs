@@ -2,7 +2,7 @@ use std::error::Error;
 
 use crate::{
     ast::{
-        Ast, Block, Call, Expression, Function, IfExpression, Infix, InfixOperator, LetStatement,
+        Ast, Block, Call, Expression, FunctionExpression, IfExpression, Infix, InfixOperator, LetStatement,
         Prefix, PrefixOperator, Statement,
     },
     lexer::Lexer,
@@ -275,7 +275,7 @@ impl<'a> Parser<'a> {
         }
         let body = self.parse_block()?;
 
-        let func = Function { name, params, body };
+        let func = FunctionExpression { name, params, body };
         let res = Expression::Function(func);
         return Ok(res);
     }
@@ -394,7 +394,7 @@ impl<'a> Parser<'a> {
 mod test {
 
     use crate::{
-        ast::{Expression, Function, InfixOperator, LetStatement, PrefixOperator, Statement},
+        ast::{Expression, FunctionExpression, InfixOperator, LetStatement, PrefixOperator, Statement},
         lexer::Lexer,
     };
 
@@ -481,7 +481,7 @@ mod test {
         assert_eq!(*b, exp);
     }
 
-    fn assert_function(e: &Expression) -> &Function {
+    fn assert_function(e: &Expression) -> &FunctionExpression {
         assert!(matches!(e, Expression::Function(_)));
         let f = match e {
             Expression::Function(f) => f,
