@@ -1,5 +1,3 @@
-
-
 pub fn is_letter(ch: u8) -> bool {
     return b'a' <= ch && ch <= b'z' || b'A' <= ch && b'Z' <= ch;
 }

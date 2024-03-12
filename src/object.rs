@@ -1,3 +1,9 @@
+#[derive(PartialEq, Eq)]
+pub enum ObjectType {
+    Null,
+    Int,
+    Bool,
+}
 
 #[derive(PartialEq, Eq)]
 pub enum Object {
@@ -7,11 +13,11 @@ pub enum Object {
 }
 
 impl Object {
-    pub fn get_type(&self) -> &'static str {
+    pub fn get_type(&self) -> ObjectType {
         match self {
-            Object::Null => "Null",
-            Object::Int(_) => "Integer",
-            Object::Bool(_) => "Bool",
+            Object::Null => ObjectType::Null,
+            Object::Int(_) => ObjectType::Int,
+            Object::Bool(_) => ObjectType::Bool,
         }
     }
 

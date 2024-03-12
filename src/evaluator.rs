@@ -1,6 +1,6 @@
 use crate::{
-    ast::{Ast, Expression, PrefixOperator, Statement},
-    object::Object,
+    ast::{Ast, Expression, InfixOperator, PrefixOperator, Statement},
+    object::{Object, ObjectType},
 };
 
 const TRUE: Object = Object::Bool(true);
@@ -34,6 +34,11 @@ fn eval_expression(e: &Expression) -> Object {
             let right = eval_expression(&prefix.right);
             return eval_prefix(&prefix.oper, right);
         }
+        Expression::Infix(infix) => {
+            let left = eval_expression(&infix.left);
+            let right = eval_expression(&infix.right);
+            return eval_infix(&infix.oper, left, right);
+        }
         _ => todo!(),
     }
 }
@@ -42,6 +47,40 @@ fn eval_prefix(oper: &PrefixOperator, right: Object) -> Object {
     match oper {
         PrefixOperator::Bang => eval_bang(right),
         PrefixOperator::Minus => eval_minus_prefix(right),
+    }
+}
+
+fn eval_infix(oper: &InfixOperator, left: Object, right: Object) -> Object {
+    if left.get_type() == ObjectType::Int && right.get_type() == ObjectType::Int {
+        let lval = match left {
+            Object::Int(i) => i,
+            _ => unreachable!(),
+        };
+        let rval = match right {
+            Object::Int(i) => i,
+            _ => unreachable!(),
+        };
+        return eval_int_infix(oper, lval, rval);
+    }
+    if *oper == InfixOperator::Eq {
+        return native_bool_to_boolean_object(left == right);
+    }
+    if *oper == InfixOperator::NotEq {
+        return native_bool_to_boolean_object(left != right);
+    }
+    return NULL;
+}
+
+fn eval_int_infix(oper: &InfixOperator, left: i64, right: i64) -> Object {
+    match oper {
+        InfixOperator::Plus => Object::Int(left + right),
+        InfixOperator::Minus => Object::Int(left - right),
+        InfixOperator::Asterisk => Object::Int(left * right),
+        InfixOperator::Slash => Object::Int(left / right),
+        InfixOperator::Lt => native_bool_to_boolean_object(left < right),
+        InfixOperator::Gt => native_bool_to_boolean_object(left > right),
+        InfixOperator::Eq => native_bool_to_boolean_object(left == right),
+        InfixOperator::NotEq => native_bool_to_boolean_object(left != right),
     }
 }
 
@@ -138,6 +177,50 @@ mod test {
                 input: "-10",
                 expected: -10,
             },
+            IntTest {
+                input: "5 + 5 + 5 + 5 - 10",
+                expected: 10,
+            },
+            IntTest {
+                input: "2 * 2 * 2 * 2 * 2",
+                expected: 32,
+            },
+            IntTest {
+                input: "-50 + 100 + -50",
+                expected: 0,
+            },
+            IntTest {
+                input: "5 * 2 + 10",
+                expected: 20,
+            },
+            IntTest {
+                input: "5 + 2 * 10",
+                expected: 25,
+            },
+            IntTest {
+                input: "20 + 2 * -10",
+                expected: 0,
+            },
+            IntTest {
+                input: "50 / 2 * 2 + 10",
+                expected: 60,
+            },
+            IntTest {
+                input: "2 * (5 + 10)",
+                expected: 30,
+            },
+            IntTest {
+                input: "3 * 3 * 3 + 10",
+                expected: 37,
+            },
+            IntTest {
+                input: "3 * (3 * 3) + 10",
+                expected: 37,
+            },
+            IntTest {
+                input: "(5 + 10 * 2 + 15 / 3) * 2 + -10",
+                expected: 50,
+            },
         ];
 
         for test in tests {
@@ -179,6 +262,78 @@ mod test {
             },
             BoolTest {
                 input: "!!5",
+                expected: true,
+            },
+            BoolTest {
+                input: "false",
+                expected: false,
+            },
+            BoolTest {
+                input: "1 < 2",
+                expected: true,
+            },
+            BoolTest {
+                input: "1 > 2",
+                expected: false,
+            },
+            BoolTest {
+                input: "1 < 1",
+                expected: false,
+            },
+            BoolTest {
+                input: "1 > 1",
+                expected: false,
+            },
+            BoolTest {
+                input: "1 == 1",
+                expected: true,
+            },
+            BoolTest {
+                input: "1 != 1",
+                expected: false,
+            },
+            BoolTest {
+                input: "1 == 2",
+                expected: false,
+            },
+            BoolTest {
+                input: "1 != 2",
+                expected: true,
+            },
+            BoolTest {
+                input: "true == true",
+                expected: true,
+            },
+            BoolTest {
+                input: "false == false",
+                expected: true,
+            },
+            BoolTest {
+                input: "true == false",
+                expected: false,
+            },
+            BoolTest {
+                input: "true != false",
+                expected: true,
+            },
+            BoolTest {
+                input: "false != true",
+                expected: true,
+            },
+            BoolTest {
+                input: "(1 < 2) == true",
+                expected: true,
+            },
+            BoolTest {
+                input: "(1 < 2) == false",
+                expected: false,
+            },
+            BoolTest {
+                input: "(1 > 2) == true",
+                expected: false,
+            },
+            BoolTest {
+                input: "(1 > 2) == false",
                 expected: true,
             },
         ];

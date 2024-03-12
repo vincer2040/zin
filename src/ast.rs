@@ -172,7 +172,7 @@ impl ToString for IfExpression {
             Some(body) => {
                 res += "else";
                 res += &body.to_string();
-            },
+            }
             None => (),
         };
         return res;
