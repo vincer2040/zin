@@ -703,4 +703,19 @@ mod test {
             test_int(&res, test.expected);
         }
     }
+
+    #[test]
+    fn test_closures() {
+        let input = "
+            fn newAdder(x) {
+                fn adder(y) { x + y };
+                return adder;
+            };
+            let addTwo = newAdder(2);
+            addTwo(2);
+            ";
+
+        let res = test_eval(input);
+        test_int(&res, 4);
+    }
 }
