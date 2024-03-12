@@ -42,12 +42,23 @@ pub struct Infix {
     pub right: std::rc::Rc<Expression>,
 }
 
+pub struct Block {
+    pub block: Vec<Statement>,
+}
+
+pub struct Function {
+    pub name: String,
+    pub args: Vec<String>,
+    pub body: Block,
+}
+
 pub enum Expression {
     Boolean(bool),
     Ident(String),
     Int(i64),
     Prefix(Prefix),
     Infix(Infix),
+    Function(Function),
 }
 
 impl ToString for Ast {
@@ -95,6 +106,7 @@ impl ToString for Expression {
             Expression::Int(i) => i.to_string(),
             Expression::Prefix(prefix) => prefix.to_string(),
             Expression::Infix(infix) => infix.to_string(),
+            Expression::Function(func) => func.to_string(),
         }
     }
 }
@@ -130,6 +142,33 @@ impl ToString for Infix {
         }
         res += &self.right.to_string();
         res += ")";
+        return res;
+    }
+}
+
+impl ToString for Function {
+    fn to_string(&self) -> String {
+        let mut res = String::new();
+        res += "fn ";
+        res += &self.name;
+        res += "(";
+        for (i, arg) in self.args.iter().enumerate() {
+            res += arg;
+            if i < self.args.len() - 1 {
+                res += ", ";
+            }
+        }
+        res += &self.body.to_string();
+        return res;
+    }
+}
+
+impl ToString for Block {
+    fn to_string(&self) -> String {
+        let mut res = String::new();
+        for stmt in &self.block {
+            res += &stmt.to_string();
+        }
         return res;
     }
 }

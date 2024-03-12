@@ -1,7 +1,10 @@
 use std::error::Error;
 
 use crate::{
-    ast::{Ast, Expression, Infix, InfixOperator, LetStatement, Prefix, PrefixOperator, Statement},
+    ast::{
+        Ast, Block, Expression, Function, Infix, InfixOperator, LetStatement, Prefix,
+        PrefixOperator, Statement,
+    },
     lexer::Lexer,
     token::Token,
 };
@@ -137,6 +140,7 @@ impl<'a> Parser<'a> {
             Token::Minus => exp = self.parse_prefix(PrefixOperator::Minus)?,
             Token::Bang => exp = self.parse_prefix(PrefixOperator::Bang)?,
             Token::LParen => exp = self.parse_group()?,
+            Token::Function => exp = self.parse_function()?,
             _ => {
                 let err = format!("unknown token {:#?}", cur);
                 return Err(err.into());
@@ -219,6 +223,79 @@ impl<'a> Parser<'a> {
         return Ok(Expression::Infix(infix));
     }
 
+    fn parse_function(&mut self) -> Result<Expression, ParserError> {
+        self.next_token();
+        let name = match std::mem::take(&mut self.cur) {
+            Token::Ident(ident) => ident,
+            _ => {
+                let err = format!("expected Ident, got {:#?}", self.cur);
+                return Err(err.into());
+            }
+        };
+        if !self.expect_peek(Token::LParen) {
+            let err = format!("expected LParen, got {:#?}", self.peek);
+            return Err(err.into());
+        }
+        let args = self.parse_function_params()?;
+        if !self.expect_peek(Token::LSquirly) {
+            let err = format!("expected LSquirly, got {:#?}", self.peek);
+            return Err(err.into());
+        }
+        let body = self.parse_block()?;
+
+        let func = Function { name, args, body };
+        let res = Expression::Function(func);
+        return Ok(res);
+    }
+
+    fn parse_function_params(&mut self) -> Result<Vec<String>, ParserError> {
+        let mut res = Vec::new();
+        if self.peek == Token::RParen {
+            self.next_token();
+            return Ok(res);
+        }
+        self.next_token();
+        let cur = match std::mem::take(&mut self.cur) {
+            Token::Ident(val) => val,
+            _ => {
+                let err = format!("expected Ident, got {:#?}", self.cur);
+                return Err(err.into());
+            }
+        };
+        res.push(cur);
+        while self.peek == Token::Comma {
+            self.next_token();
+            self.next_token();
+            let next = match std::mem::take(&mut self.cur) {
+                Token::Ident(val) => val,
+                _ => {
+                    let err = format!("expected Ident, got {:#?}", self.cur);
+                    return Err(err.into());
+                }
+            };
+            res.push(next);
+        }
+
+        if !self.expect_peek(Token::RParen) {
+            let err = format!("expected RParen, got {:#?}", self.peek);
+            return Err(err.into());
+        }
+        return Ok(res);
+    }
+
+    fn parse_block(&mut self) -> Result<Block, ParserError> {
+        self.next_token();
+        let mut stmts = Vec::new();
+
+        while self.cur != Token::RSquirly && self.cur != Token::Eof {
+            let stmt = self.parse_statement()?;
+            stmts.push(stmt);
+            self.next_token();
+        }
+        let res = Block { block: stmts };
+        return Ok(res);
+    }
+
     fn cur_precedence(&self) -> Precedence {
         return Precedence::new(&self.cur);
     }
@@ -245,7 +322,7 @@ impl<'a> Parser<'a> {
 mod test {
 
     use crate::{
-        ast::{Expression, InfixOperator, LetStatement, PrefixOperator, Statement},
+        ast::{Expression, Function, InfixOperator, LetStatement, PrefixOperator, Statement},
         lexer::Lexer,
     };
 
@@ -332,6 +409,15 @@ mod test {
         assert_eq!(*b, exp);
     }
 
+    fn assert_function(e: &Expression) -> &Function {
+        assert!(matches!(e, Expression::Function(_)));
+        let f = match e {
+            Expression::Function(f) => f,
+            _ => unreachable!(),
+        };
+        return f;
+    }
+
     fn assert_int_prefix(e: &Expression, oper: PrefixOperator, exp: i64) {
         assert!(matches!(e, Expression::Prefix(_)));
         let prefix = match e {
@@ -356,6 +442,17 @@ mod test {
         assert_eq!(infix.oper, oper);
         assert_int(&infix.left, left);
         assert_int(&infix.right, right);
+    }
+
+    fn assert_ident_infix(e: &Expression, oper: InfixOperator, left: &str, right: &str) {
+        assert!(matches!(e, Expression::Infix(_)));
+        let infix = match e {
+            Expression::Infix(inf) => inf,
+            _ => unreachable!(),
+        };
+        assert_eq!(infix.oper, oper);
+        assert_ident(&infix.left, left);
+        assert_ident(&infix.right, right);
     }
 
     #[test]
@@ -544,6 +641,35 @@ mod test {
                 _ => unreachable!(),
             };
         }
+    }
+
+    #[test]
+    fn test_function() {
+        let input = "
+        fn add(x, y) {
+            return x + y;
+        }
+        ";
+        let l = Lexer::new(input.as_bytes());
+        let mut p = Parser::new(l);
+        let res = p.parse();
+        check_errors(&p);
+        assert_eq!(res.statements.len(), 1);
+        let stmt = &res.statements[0];
+        let exp = assert_expression(&stmt);
+        let func = assert_function(&exp);
+        assert_eq!(func.name, "add");
+        assert_eq!(func.args.len(), 2);
+        assert_eq!(func.args[0], "x");
+        assert_eq!(func.args[1], "y");
+        assert_eq!(func.body.block.len(), 1);
+        let body_stmt = &func.body.block[0];
+        assert!(matches!(body_stmt, Statement::ReturnStatement(_)));
+        let ret = match body_stmt {
+            Statement::ReturnStatement(rs) => rs,
+            _ => unreachable!(),
+        };
+        assert_ident_infix(&ret, InfixOperator::Plus, "x", "y");
     }
 
     #[test]
