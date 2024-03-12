@@ -2,6 +2,7 @@ use std::ops::Deref;
 
 use crate::{
     ast::{Ast, Block, Expression, IfExpression, InfixOperator, PrefixOperator, Statement},
+    environment::Environment,
     object::{Object, ObjectType},
 };
 
@@ -9,14 +10,14 @@ const TRUE: Object = Object::Bool(true);
 const FALSE: Object = Object::Bool(false);
 const NULL: Object = Object::Null;
 
-pub fn eval(ast: Ast) -> Object {
-    eval_statements(&ast.statements)
+pub fn eval(ast: Ast, env: &mut Environment) -> Object {
+    eval_statements(&ast.statements, env)
 }
 
-fn eval_statements(stmts: &Vec<Statement>) -> Object {
+fn eval_statements(stmts: &Vec<Statement>, env: &mut Environment) -> Object {
     let mut res = Object::default();
     for stmt in stmts {
-        res = eval_statement(&stmt);
+        res = eval_statement(&stmt, env);
         if res.is_error() {
             return res;
         }
@@ -27,43 +28,57 @@ fn eval_statements(stmts: &Vec<Statement>) -> Object {
     return res;
 }
 
-fn eval_statement(stmt: &Statement) -> Object {
+fn eval_statement(stmt: &Statement, env: &mut Environment) -> Object {
     match stmt {
+        Statement::LetStatement(ls) => {
+            let res = eval_expression(&ls.value, env);
+            if res.is_error() {
+                return res;
+            }
+            env.set(ls.name.to_owned(), res);
+            return NULL;
+        }
         Statement::ReturnStatement(e) => {
-            let res = eval_expression(&e);
+            let res = eval_expression(&e, env);
             if res.is_error() {
                 return res;
             }
             Object::Return(Box::new(res))
         }
-        Statement::ExpressionStatement(e) => eval_expression(&e),
-        _ => todo!(),
+        Statement::ExpressionStatement(e) => eval_expression(&e, env),
     }
 }
 
-fn eval_expression(e: &Expression) -> Object {
+fn eval_expression(e: &Expression, env: &mut Environment) -> Object {
     match e {
         Expression::Int(val) => Object::Int(*val),
         Expression::Boolean(val) => native_bool_to_boolean_object(*val),
+        Expression::Ident(val) => match env.get(val) {
+            Some(res) => res.to_owned(),
+            None => {
+                let err = format!("identifier not found: {}", val);
+                return Object::Error(err);
+            }
+        },
         Expression::Prefix(prefix) => {
-            let right = eval_expression(&prefix.right);
+            let right = eval_expression(&prefix.right, env);
             if right.is_error() {
                 return right;
             }
             return eval_prefix(&prefix.oper, right);
         }
         Expression::Infix(infix) => {
-            let left = eval_expression(&infix.left);
+            let left = eval_expression(&infix.left, env);
             if left.is_error() {
                 return left;
             }
-            let right = eval_expression(&infix.right);
+            let right = eval_expression(&infix.right, env);
             if right.is_error() {
                 return right;
             }
             return eval_infix(&infix.oper, left, right);
         }
-        Expression::IfExpression(if_exp) => eval_if_expression(if_exp),
+        Expression::IfExpression(if_exp) => eval_if_expression(if_exp, env),
         _ => todo!(),
     }
 }
@@ -111,24 +126,24 @@ fn eval_infix(oper: &InfixOperator, left: Object, right: Object) -> Object {
     return Object::Error(err);
 }
 
-fn eval_if_expression(if_exp: &IfExpression) -> Object {
-    let cond = eval_expression(&if_exp.cond);
+fn eval_if_expression(if_exp: &IfExpression, env: &mut Environment) -> Object {
+    let cond = eval_expression(&if_exp.cond, env);
     if cond.is_error() {
         return cond;
     }
     if is_truthy(&cond) {
-        return eval_block(&if_exp.consequence);
+        return eval_block(&if_exp.consequence, env);
     }
     if let Some(alt) = &if_exp.alternative {
-        return eval_block(&alt);
+        return eval_block(&alt, env);
     }
     return NULL;
 }
 
-fn eval_block(block: &Block) -> Object {
+fn eval_block(block: &Block, env: &mut Environment) -> Object {
     let mut res = Object::default();
     for stmt in &block.block {
-        res = eval_statement(&stmt);
+        res = eval_statement(&stmt, env);
         if res.is_error() {
             return res;
         }
@@ -190,7 +205,7 @@ fn native_bool_to_boolean_object(input: bool) -> Object {
 
 #[cfg(test)]
 mod test {
-    use crate::{lexer::Lexer, object::Object, parser::Parser};
+    use crate::{environment::Environment, lexer::Lexer, object::Object, parser::Parser};
 
     use super::eval;
 
@@ -208,11 +223,12 @@ mod test {
     }
 
     fn test_eval(input: &str) -> Object {
+        let mut env = Environment::new();
         let l = Lexer::new(input.as_bytes());
         let mut p = Parser::new(l);
         let ast = p.parse();
         check_errors(&p);
-        return eval(ast);
+        return eval(ast, &mut env);
     }
 
     fn test_int(got: &Object, exp: i64) {
@@ -549,12 +565,42 @@ mod test {
                 ",
                 expected: "unknown operator: BOOLEAN + BOOLEAN",
             },
+            Test {
+                input: "foobar",
+                expected: "identifier not found: foobar",
+            },
         ];
 
-        for (i, test) in tests.iter().enumerate() {
-            println!("{}", i);
+        for test in tests {
             let res = test_eval(test.input);
             test_error(&res, test.expected);
+        }
+    }
+
+    #[test]
+    fn test_let_statement() {
+        let tests = [
+            Test {
+                input: "let a = 5; a;",
+                expected: 5,
+            },
+            Test {
+                input: "let a = 5 * 5; a;",
+                expected: 25,
+            },
+            Test {
+                input: "let a = 5; let b = a; b;",
+                expected: 5,
+            },
+            Test {
+                input: "let a = 5; let b = a; let c = a + b + 5; c;",
+                expected: 15,
+            },
+        ];
+
+        for test in tests {
+            let res = test_eval(test.input);
+            test_int(&res, test.expected);
         }
     }
 }

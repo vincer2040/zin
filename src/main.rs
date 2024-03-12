@@ -1,10 +1,12 @@
 use std::io::{stdin, stdout, Write};
 
+use environment::Environment;
 use lexer::Lexer;
 
 use crate::{evaluator::eval, parser::Parser};
 
 mod ast;
+mod environment;
 mod evaluator;
 mod lexer;
 mod object;
@@ -13,6 +15,7 @@ mod token;
 mod util;
 
 fn main() -> std::io::Result<()> {
+    let mut env = Environment::new();
     loop {
         let mut line = String::new();
         print!(">>> ");
@@ -27,7 +30,7 @@ fn main() -> std::io::Result<()> {
         if !check_errors(&p) {
             continue;
         }
-        let evaluated = eval(ast);
+        let evaluated = eval(ast, &mut env);
         let obj_string = evaluated.inspect();
         println!("{}", obj_string);
     }
