@@ -54,8 +54,13 @@ pub struct IfExpression {
 
 pub struct Function {
     pub name: String,
-    pub args: Vec<String>,
+    pub params: Vec<String>,
     pub body: Block,
+}
+
+pub struct Call {
+    pub name: String,
+    pub args: Vec<Expression>,
 }
 
 pub enum Expression {
@@ -66,6 +71,7 @@ pub enum Expression {
     Infix(Infix),
     IfExpression(IfExpression),
     Function(Function),
+    Call(Call),
 }
 
 impl ToString for Ast {
@@ -115,6 +121,7 @@ impl ToString for Expression {
             Expression::Infix(infix) => infix.to_string(),
             Expression::Function(func) => func.to_string(),
             Expression::IfExpression(if_expression) => if_expression.to_string(),
+            Expression::Call(call) => call.to_string(),
         }
     }
 }
@@ -178,13 +185,29 @@ impl ToString for Function {
         res += "fn ";
         res += &self.name;
         res += "(";
-        for (i, arg) in self.args.iter().enumerate() {
+        for (i, arg) in self.params.iter().enumerate() {
             res += arg;
-            if i < self.args.len() - 1 {
+            if i < self.params.len() - 1 {
                 res += ", ";
             }
         }
         res += &self.body.to_string();
+        return res;
+    }
+}
+
+impl ToString for Call {
+    fn to_string(&self) -> String {
+        let mut res = String::new();
+        res += &self.name;
+        res += "(";
+        for (i, arg) in self.args.iter().enumerate() {
+            let s = arg.to_string();
+            res += &s;
+            if i > self.args.len() {
+                res += ", ";
+            }
+        }
         return res;
     }
 }

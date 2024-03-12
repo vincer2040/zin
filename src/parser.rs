@@ -2,8 +2,8 @@ use std::error::Error;
 
 use crate::{
     ast::{
-        Ast, Block, Expression, Function, IfExpression, Infix, InfixOperator, LetStatement, Prefix,
-        PrefixOperator, Statement,
+        Ast, Block, Call, Expression, Function, IfExpression, Infix, InfixOperator, LetStatement,
+        Prefix, PrefixOperator, Statement,
     },
     lexer::Lexer,
     token::Token,
@@ -61,14 +61,12 @@ impl<'a> Parser<'a> {
         while self.cur != Token::Eof {
             let stmt = self.parse_statement();
             match stmt {
-                Ok(s) => {
-                    stmts.push(s);
-                }
+                Ok(s) => stmts.push(s),
                 Err(e) => {
                     let s = e.to_string();
                     self.errors.push(s);
                 }
-            }
+            };
             self.next_token();
         }
 
@@ -182,6 +180,10 @@ impl<'a> Parser<'a> {
                     self.next_token();
                     exp = self.parse_infix(InfixOperator::NotEq, exp)?;
                 }
+                Token::LParen => {
+                    self.next_token();
+                    exp = self.parse_call(exp)?;
+                }
                 _ => return Ok(exp),
             }
         }
@@ -266,15 +268,33 @@ impl<'a> Parser<'a> {
             let err = format!("expected LParen, got {:#?}", self.peek);
             return Err(err.into());
         }
-        let args = self.parse_function_params()?;
+        let params = self.parse_function_params()?;
         if !self.expect_peek(Token::LSquirly) {
             let err = format!("expected LSquirly, got {:#?}", self.peek);
             return Err(err.into());
         }
         let body = self.parse_block()?;
 
-        let func = Function { name, args, body };
+        let func = Function { name, params, body };
         let res = Expression::Function(func);
+        return Ok(res);
+    }
+
+    fn parse_call(&mut self, e: Expression) -> Result<Expression, ParserError> {
+        let name = match e {
+            Expression::Ident(name) => name,
+            _ => {
+                let err = format!("expected Ident, got {}", e.to_string());
+                return Err(err.into());
+            }
+        };
+        if self.cur != Token::LParen {
+            let err = format!("expected LParen, got {:#?}", self.peek);
+            return Err(err.into());
+        }
+        let args = self.parse_call_args()?;
+        let call = Call { name, args };
+        let res = Expression::Call(call);
         return Ok(res);
     }
 
@@ -306,6 +326,28 @@ impl<'a> Parser<'a> {
             res.push(next);
         }
 
+        if !self.expect_peek(Token::RParen) {
+            let err = format!("expected RParen, got {:#?}", self.peek);
+            return Err(err.into());
+        }
+        return Ok(res);
+    }
+
+    fn parse_call_args(&mut self) -> Result<Vec<Expression>, ParserError> {
+        let mut res = Vec::new();
+        if self.peek == Token::RParen {
+            self.next_token();
+            return Ok(res);
+        }
+        self.next_token();
+        let cur = self.parse_expression(Precedence::Lowest)?;
+        res.push(cur);
+        while self.peek == Token::Comma {
+            self.next_token();
+            self.next_token();
+            let next = self.parse_expression(Precedence::Lowest)?;
+            res.push(next);
+        }
         if !self.expect_peek(Token::RParen) {
             let err = format!("expected RParen, got {:#?}", self.peek);
             return Err(err.into());
@@ -689,9 +731,9 @@ mod test {
         let exp = assert_expression(&stmt);
         let func = assert_function(&exp);
         assert_eq!(func.name, "add");
-        assert_eq!(func.args.len(), 2);
-        assert_eq!(func.args[0], "x");
-        assert_eq!(func.args[1], "y");
+        assert_eq!(func.params.len(), 2);
+        assert_eq!(func.params[0], "x");
+        assert_eq!(func.params[1], "y");
         assert_eq!(func.body.block.len(), 1);
         let body_stmt = &func.body.block[0];
         assert!(matches!(body_stmt, Statement::ReturnStatement(_)));
@@ -741,6 +783,27 @@ mod test {
             _ => unreachable!(),
         };
         assert_ident(&alt_ret, "y");
+    }
+
+    #[test]
+    fn test_call() {
+        let input = "add(y, 5 + 10);";
+        let l = Lexer::new(input.as_bytes());
+        let mut p = Parser::new(l);
+        let res = p.parse();
+        check_errors(&p);
+        assert_eq!(res.statements.len(), 1);
+        let stmt = &res.statements[0];
+        let exp = assert_expression(&stmt);
+        assert!(matches!(exp, Expression::Call(_)));
+        let call = match exp {
+            Expression::Call(call) => call,
+            _ => unreachable!(),
+        };
+        assert_eq!(call.name, "add");
+        assert_eq!(call.args.len(), 2);
+        assert_ident(&call.args[0], "y");
+        assert_int_infix(&call.args[1], InfixOperator::Plus, 5, 10);
     }
 
     #[test]
