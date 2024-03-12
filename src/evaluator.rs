@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use crate::{
     ast::{Ast, Block, Expression, IfExpression, InfixOperator, PrefixOperator, Statement},
     object::{Object, ObjectType},
@@ -15,12 +17,16 @@ fn eval_statements(stmts: &Vec<Statement>) -> Object {
     let mut res = Object::default();
     for stmt in stmts {
         res = eval_statement(&stmt);
+        if let Object::Return(r) = &res {
+            return r.deref().to_owned();
+        }
     }
     return res;
 }
 
 fn eval_statement(stmt: &Statement) -> Object {
     match stmt {
+        Statement::ReturnStatement(e) => Object::Return(Box::new(eval_expression(&e))),
         Statement::ExpressionStatement(e) => eval_expression(&e),
         _ => todo!(),
     }
@@ -84,7 +90,14 @@ fn eval_if_expression(if_exp: &IfExpression) -> Object {
 }
 
 fn eval_block(block: &Block) -> Object {
-    eval_statements(&block.block)
+    let mut res = Object::default();
+    for stmt in &block.block {
+        res = eval_statement(&stmt);
+        if let Object::Return(_) = &res {
+            return res;
+        }
+    }
+    return res;
 }
 
 fn is_truthy(obj: &Object) -> bool {
@@ -92,6 +105,7 @@ fn is_truthy(obj: &Object) -> bool {
         Object::Bool(val) => *val,
         Object::Int(_) => true,
         Object::Null => false,
+        _ => true,
     }
 }
 
@@ -416,6 +430,43 @@ mod test {
                 Some(val) => test_int(&res, val),
                 None => test_null(&res),
             }
+        }
+    }
+
+    #[test]
+    fn test_return_statement() {
+        let tests = [
+            IntTest {
+                input: "return 10;",
+                expected: 10,
+            },
+            IntTest {
+                input: "return 10; 9;",
+                expected: 10,
+            },
+            IntTest {
+                input: "return 2 * 5; 9;",
+                expected: 10,
+            },
+            IntTest {
+                input: "9; return 2 * 5; 9;",
+                expected: 10,
+            },
+            IntTest {
+                input: "
+                    if (10 > 1) {
+                        if (10 > 1) {
+                            return 10;
+                        }
+                        return 1
+                    }
+                    ",
+                expected: 10,
+            },
+        ];
+        for test in tests {
+            let res = test_eval(test.input);
+            test_int(&res, test.expected);
         }
     }
 }

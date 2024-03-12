@@ -3,13 +3,15 @@ pub enum ObjectType {
     Null,
     Int,
     Bool,
+    Return,
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Object {
     Null,
     Int(i64),
     Bool(bool),
+    Return(Box<Object>),
 }
 
 impl Object {
@@ -18,6 +20,7 @@ impl Object {
             Object::Null => ObjectType::Null,
             Object::Int(_) => ObjectType::Int,
             Object::Bool(_) => ObjectType::Bool,
+            Object::Return(_) => ObjectType::Return,
         }
     }
 
@@ -26,6 +29,7 @@ impl Object {
             Object::Null => "Null".to_string(),
             Object::Int(val) => val.to_string(),
             Object::Bool(val) => val.to_string(),
+            Object::Return(val) => val.inspect(),
         }
     }
 }
