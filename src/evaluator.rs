@@ -152,19 +152,9 @@ mod test {
 
     use super::eval;
 
-    struct IntTest {
+    struct Test<T> {
         input: &'static str,
-        expected: i64,
-    }
-
-    struct BoolTest {
-        input: &'static str,
-        expected: bool,
-    }
-
-    struct IfElseTest {
-        input: &'static str,
-        expected: Option<i64>,
+        expected: T,
     }
 
     fn check_errors(p: &Parser) {
@@ -208,63 +198,63 @@ mod test {
     #[test]
     fn test_eval_integer_expression() {
         let tests = [
-            IntTest {
+            Test {
                 input: "5;",
                 expected: 5,
             },
-            IntTest {
+            Test {
                 input: "10;",
                 expected: 10,
             },
-            IntTest {
+            Test {
                 input: "-5",
                 expected: -5,
             },
-            IntTest {
+            Test {
                 input: "-10",
                 expected: -10,
             },
-            IntTest {
+            Test {
                 input: "5 + 5 + 5 + 5 - 10",
                 expected: 10,
             },
-            IntTest {
+            Test {
                 input: "2 * 2 * 2 * 2 * 2",
                 expected: 32,
             },
-            IntTest {
+            Test {
                 input: "-50 + 100 + -50",
                 expected: 0,
             },
-            IntTest {
+            Test {
                 input: "5 * 2 + 10",
                 expected: 20,
             },
-            IntTest {
+            Test {
                 input: "5 + 2 * 10",
                 expected: 25,
             },
-            IntTest {
+            Test {
                 input: "20 + 2 * -10",
                 expected: 0,
             },
-            IntTest {
+            Test {
                 input: "50 / 2 * 2 + 10",
                 expected: 60,
             },
-            IntTest {
+            Test {
                 input: "2 * (5 + 10)",
                 expected: 30,
             },
-            IntTest {
+            Test {
                 input: "3 * 3 * 3 + 10",
                 expected: 37,
             },
-            IntTest {
+            Test {
                 input: "3 * (3 * 3) + 10",
                 expected: 37,
             },
-            IntTest {
+            Test {
                 input: "(5 + 10 * 2 + 15 / 3) * 2 + -10",
                 expected: 50,
             },
@@ -279,107 +269,107 @@ mod test {
     #[test]
     fn test_eval_bool() {
         let tests = [
-            BoolTest {
+            Test {
                 input: "true;",
                 expected: true,
             },
-            BoolTest {
+            Test {
                 input: "false;",
                 expected: false,
             },
-            BoolTest {
+            Test {
                 input: "!true",
                 expected: false,
             },
-            BoolTest {
+            Test {
                 input: "!false",
                 expected: true,
             },
-            BoolTest {
+            Test {
                 input: "!5",
                 expected: false,
             },
-            BoolTest {
+            Test {
                 input: "!!true",
                 expected: true,
             },
-            BoolTest {
+            Test {
                 input: "!!false",
                 expected: false,
             },
-            BoolTest {
+            Test {
                 input: "!!5",
                 expected: true,
             },
-            BoolTest {
+            Test {
                 input: "false",
                 expected: false,
             },
-            BoolTest {
+            Test {
                 input: "1 < 2",
                 expected: true,
             },
-            BoolTest {
+            Test {
                 input: "1 > 2",
                 expected: false,
             },
-            BoolTest {
+            Test {
                 input: "1 < 1",
                 expected: false,
             },
-            BoolTest {
+            Test {
                 input: "1 > 1",
                 expected: false,
             },
-            BoolTest {
+            Test {
                 input: "1 == 1",
                 expected: true,
             },
-            BoolTest {
+            Test {
                 input: "1 != 1",
                 expected: false,
             },
-            BoolTest {
+            Test {
                 input: "1 == 2",
                 expected: false,
             },
-            BoolTest {
+            Test {
                 input: "1 != 2",
                 expected: true,
             },
-            BoolTest {
+            Test {
                 input: "true == true",
                 expected: true,
             },
-            BoolTest {
+            Test {
                 input: "false == false",
                 expected: true,
             },
-            BoolTest {
+            Test {
                 input: "true == false",
                 expected: false,
             },
-            BoolTest {
+            Test {
                 input: "true != false",
                 expected: true,
             },
-            BoolTest {
+            Test {
                 input: "false != true",
                 expected: true,
             },
-            BoolTest {
+            Test {
                 input: "(1 < 2) == true",
                 expected: true,
             },
-            BoolTest {
+            Test {
                 input: "(1 < 2) == false",
                 expected: false,
             },
-            BoolTest {
+            Test {
                 input: "(1 > 2) == true",
                 expected: false,
             },
-            BoolTest {
+            Test {
                 input: "(1 > 2) == false",
                 expected: true,
             },
@@ -394,31 +384,31 @@ mod test {
     #[test]
     fn test_if_else() {
         let tests = [
-            IfElseTest {
+            Test {
                 input: "if (true) { 10 }",
                 expected: Some(10),
             },
-            IfElseTest {
+            Test {
                 input: "if (false) { 10 }",
                 expected: None,
             },
-            IfElseTest {
+            Test {
                 input: "if (1) { 10 }",
                 expected: Some(10),
             },
-            IfElseTest {
+            Test {
                 input: "if (1 < 2) { 10 }",
                 expected: Some(10),
             },
-            IfElseTest {
+            Test {
                 input: "if (1 > 2) { 10 }",
                 expected: None,
             },
-            IfElseTest {
+            Test {
                 input: "if (1 > 2) { 10 } else { 20 }",
                 expected: Some(20),
             },
-            IfElseTest {
+            Test {
                 input: "if (1 < 2) { 10 } else { 20 }",
                 expected: Some(10),
             },
@@ -436,23 +426,23 @@ mod test {
     #[test]
     fn test_return_statement() {
         let tests = [
-            IntTest {
+            Test {
                 input: "return 10;",
                 expected: 10,
             },
-            IntTest {
+            Test {
                 input: "return 10; 9;",
                 expected: 10,
             },
-            IntTest {
+            Test {
                 input: "return 2 * 5; 9;",
                 expected: 10,
             },
-            IntTest {
+            Test {
                 input: "9; return 2 * 5; 9;",
                 expected: 10,
             },
-            IntTest {
+            Test {
                 input: "
                     if (10 > 1) {
                         if (10 > 1) {
