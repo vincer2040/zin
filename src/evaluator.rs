@@ -1,7 +1,11 @@
 use crate::{
-    ast::{Ast, Expression, Statement},
+    ast::{Ast, Expression, PrefixOperator, Statement},
     object::Object,
 };
+
+const TRUE: Object = Object::Bool(true);
+const FALSE: Object = Object::Bool(false);
+const NULL: Object = Object::Null;
 
 pub fn eval(ast: Ast) -> Object {
     eval_statements(ast.statements)
@@ -17,17 +21,52 @@ fn eval_statements(stmts: Vec<Statement>) -> Object {
 
 fn eval_statement(stmt: Statement) -> Object {
     match stmt {
-        Statement::ExpressionStatement(e) => eval_expression(e),
+        Statement::ExpressionStatement(e) => eval_expression(&e),
         _ => todo!(),
     }
 }
 
-fn eval_expression(e: Expression) -> Object {
+fn eval_expression(e: &Expression) -> Object {
     match e {
-        Expression::Int(val) => Object::Int(val),
-        Expression::Boolean(val) => Object::Bool(val),
+        Expression::Int(val) => Object::Int(*val),
+        Expression::Boolean(val) => native_bool_to_boolean_object(*val),
+        Expression::Prefix(prefix) => {
+            let right = eval_expression(&prefix.right);
+            return eval_prefix(&prefix.oper, right);
+        }
         _ => todo!(),
     }
+}
+
+fn eval_prefix(oper: &PrefixOperator, right: Object) -> Object {
+    match oper {
+        PrefixOperator::Bang => eval_bang(right),
+        PrefixOperator::Minus => eval_minus_prefix(right),
+    }
+}
+
+fn eval_bang(right: Object) -> Object {
+    match right {
+        TRUE => FALSE,
+        FALSE => TRUE,
+        NULL => TRUE,
+        _ => FALSE,
+    }
+}
+
+fn eval_minus_prefix(right: Object) -> Object {
+    let right_val = match right {
+        Object::Int(v) => v,
+        _ => return NULL,
+    };
+    return Object::Int(-right_val);
+}
+
+fn native_bool_to_boolean_object(input: bool) -> Object {
+    if input {
+        return TRUE;
+    }
+    return FALSE;
 }
 
 #[cfg(test)]
@@ -91,6 +130,14 @@ mod test {
                 input: "10;",
                 expected: 10,
             },
+            IntTest {
+                input: "-5",
+                expected: -5,
+            },
+            IntTest {
+                input: "-10",
+                expected: -10,
+            },
         ];
 
         for test in tests {
@@ -109,6 +156,30 @@ mod test {
             BoolTest {
                 input: "false;",
                 expected: false,
+            },
+            BoolTest {
+                input: "!true",
+                expected: false,
+            },
+            BoolTest {
+                input: "!false",
+                expected: true,
+            },
+            BoolTest {
+                input: "!5",
+                expected: false,
+            },
+            BoolTest {
+                input: "!!true",
+                expected: true,
+            },
+            BoolTest {
+                input: "!!false",
+                expected: false,
+            },
+            BoolTest {
+                input: "!!5",
+                expected: true,
             },
         ];
 
