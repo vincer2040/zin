@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Ast, Expression, InfixOperator, PrefixOperator, Statement},
+    ast::{Ast, Block, Expression, IfExpression, InfixOperator, PrefixOperator, Statement},
     object::{Object, ObjectType},
 };
 
@@ -8,18 +8,18 @@ const FALSE: Object = Object::Bool(false);
 const NULL: Object = Object::Null;
 
 pub fn eval(ast: Ast) -> Object {
-    eval_statements(ast.statements)
+    eval_statements(&ast.statements)
 }
 
-fn eval_statements(stmts: Vec<Statement>) -> Object {
+fn eval_statements(stmts: &Vec<Statement>) -> Object {
     let mut res = Object::default();
     for stmt in stmts {
-        res = eval_statement(stmt);
+        res = eval_statement(&stmt);
     }
     return res;
 }
 
-fn eval_statement(stmt: Statement) -> Object {
+fn eval_statement(stmt: &Statement) -> Object {
     match stmt {
         Statement::ExpressionStatement(e) => eval_expression(&e),
         _ => todo!(),
@@ -39,6 +39,7 @@ fn eval_expression(e: &Expression) -> Object {
             let right = eval_expression(&infix.right);
             return eval_infix(&infix.oper, left, right);
         }
+        Expression::IfExpression(if_exp) => eval_if_expression(if_exp),
         _ => todo!(),
     }
 }
@@ -69,6 +70,29 @@ fn eval_infix(oper: &InfixOperator, left: Object, right: Object) -> Object {
         return native_bool_to_boolean_object(left != right);
     }
     return NULL;
+}
+
+fn eval_if_expression(if_exp: &IfExpression) -> Object {
+    let cond = eval_expression(&if_exp.cond);
+    if is_truthy(&cond) {
+        return eval_block(&if_exp.consequence);
+    }
+    if let Some(alt) = &if_exp.alternative {
+        return eval_block(&alt);
+    }
+    return NULL;
+}
+
+fn eval_block(block: &Block) -> Object {
+    eval_statements(&block.block)
+}
+
+fn is_truthy(obj: &Object) -> bool {
+    match obj {
+        Object::Bool(val) => *val,
+        Object::Int(_) => true,
+        Object::Null => false,
+    }
 }
 
 fn eval_int_infix(oper: &InfixOperator, left: i64, right: i64) -> Object {
@@ -124,6 +148,11 @@ mod test {
         expected: bool,
     }
 
+    struct IfElseTest {
+        input: &'static str,
+        expected: Option<i64>,
+    }
+
     fn check_errors(p: &Parser) {
         let errs = p.errors();
         for e in errs {
@@ -156,6 +185,10 @@ mod test {
             _ => unreachable!(),
         };
         assert_eq!(*val, exp);
+    }
+
+    fn test_null(got: &Object) {
+        assert!(matches!(got, Object::Null));
     }
 
     #[test]
@@ -341,6 +374,48 @@ mod test {
         for test in tests {
             let res = test_eval(test.input);
             test_bool(&res, test.expected);
+        }
+    }
+
+    #[test]
+    fn test_if_else() {
+        let tests = [
+            IfElseTest {
+                input: "if (true) { 10 }",
+                expected: Some(10),
+            },
+            IfElseTest {
+                input: "if (false) { 10 }",
+                expected: None,
+            },
+            IfElseTest {
+                input: "if (1) { 10 }",
+                expected: Some(10),
+            },
+            IfElseTest {
+                input: "if (1 < 2) { 10 }",
+                expected: Some(10),
+            },
+            IfElseTest {
+                input: "if (1 > 2) { 10 }",
+                expected: None,
+            },
+            IfElseTest {
+                input: "if (1 > 2) { 10 } else { 20 }",
+                expected: Some(20),
+            },
+            IfElseTest {
+                input: "if (1 < 2) { 10 } else { 20 }",
+                expected: Some(10),
+            },
+        ];
+
+        for test in tests {
+            let res = test_eval(test.input);
+            match test.expected {
+                Some(val) => test_int(&res, val),
+                None => test_null(&res),
+            }
         }
     }
 }
