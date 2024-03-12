@@ -52,6 +52,10 @@ impl<'a> Lexer<'a> {
             b')' => tok = Token::RParen,
             b'{' => tok = Token::LSquirly,
             b'}' => tok = Token::RSquirly,
+            b'"' => {
+                let s = self.read_string();
+                tok = Token::String(s);
+            }
             0 => tok = Token::Eof,
             _ => {
                 if is_letter(self.ch) {
@@ -74,6 +78,19 @@ impl<'a> Lexer<'a> {
             return 0;
         }
         return self.input[self.pos];
+    }
+
+    fn read_string(&mut self) -> String {
+        let mut res = String::new();
+        self.read_btye();
+        loop {
+            if self.ch == b'"' || self.ch == 0 {
+                break;
+            }
+            res.push(self.ch as char);
+            self.read_btye();
+        }
+        return res;
     }
 
     fn read_ident(&mut self) -> String {
@@ -242,6 +259,26 @@ mod test {
             Token::Ident("y".to_string()),
             Token::Semicolon,
             Token::RSquirly,
+            Token::Eof,
+        ];
+
+        for exp in exps {
+            let tok = l.next_token();
+            assert_eq!(exp, tok);
+        }
+    }
+
+    #[test]
+    fn test_strings() {
+        let input = "
+            \"foobar\"
+            \"foo bar\"
+            ";
+
+        let mut l = Lexer::new(input.as_bytes());
+        let exps = [
+            Token::String("foobar".to_string()),
+            Token::String("foo bar".to_string()),
             Token::Eof,
         ];
 

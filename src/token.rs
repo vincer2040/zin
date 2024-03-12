@@ -25,6 +25,7 @@ pub enum Token {
     Return,
     True,
     False,
+    String(String),
     Ident(String),
     Int(String),
 }
