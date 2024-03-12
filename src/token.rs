@@ -19,6 +19,8 @@ pub enum Token {
     LSquirly,
     RSquirly,
     Let,
+    If,
+    Else,
     Function,
     Return,
     True,
@@ -31,7 +33,9 @@ impl Into<Token> for String {
     fn into(self) -> Token {
         match self.as_str() {
             "fn" => Token::Function,
+            "if" => Token::If,
             "let" => Token::Let,
+            "else" => Token::Else,
             "true" => Token::True,
             "false" => Token::False,
             "return" => Token::Return,

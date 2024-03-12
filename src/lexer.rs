@@ -214,4 +214,40 @@ mod test {
             assert_eq!(tok, exp);
         }
     }
+
+    #[test]
+    fn test_if_else() {
+        let input = "
+            if x < y {
+                return x;
+            } else {
+                return y;
+            }
+        ";
+
+        let mut l = Lexer::new(input.as_bytes());
+        let exps = [
+            Token::If,
+            Token::Ident("x".to_string()),
+            Token::Lt,
+            Token::Ident("y".to_string()),
+            Token::LSquirly,
+            Token::Return,
+            Token::Ident("x".to_string()),
+            Token::Semicolon,
+            Token::RSquirly,
+            Token::Else,
+            Token::LSquirly,
+            Token::Return,
+            Token::Ident("y".to_string()),
+            Token::Semicolon,
+            Token::RSquirly,
+            Token::Eof,
+        ];
+
+        for exp in exps {
+            let tok = l.next_token();
+            assert_eq!(exp, tok);
+        }
+    }
 }
