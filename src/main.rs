@@ -2,10 +2,12 @@ use std::io::{stdin, stdout, Write};
 
 use lexer::Lexer;
 
-use crate::parser::Parser;
+use crate::{evaluator::eval, parser::Parser};
 
 mod ast;
+mod evaluator;
 mod lexer;
+mod object;
 mod parser;
 mod token;
 mod util;
@@ -22,9 +24,12 @@ fn main() -> std::io::Result<()> {
         let l = Lexer::new(line.as_bytes());
         let mut p = Parser::new(l);
         let ast = p.parse();
-        check_errors(&p);
-        let s = ast.to_string();
-        println!("{}", s);
+        if !check_errors(&p) {
+            continue;
+        }
+        let evaluated = eval(ast);
+        let obj_string = evaluated.inspect();
+        println!("{}", obj_string);
     }
     Ok(())
 }
