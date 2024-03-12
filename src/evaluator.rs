@@ -25,6 +25,7 @@ fn eval_statement(stmt: Statement) -> Object {
 fn eval_expression(e: Expression) -> Object {
     match e {
         Expression::Int(val) => Object::Int(val),
+        Expression::Boolean(val) => Object::Bool(val),
         _ => todo!(),
     }
 }
