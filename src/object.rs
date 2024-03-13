@@ -5,6 +5,7 @@ pub enum ObjectType {
     Null,
     Int,
     Bool,
+    String,
     Return,
     Error,
     Function,
@@ -23,6 +24,7 @@ pub enum Object {
     Null,
     Int(i64),
     Bool(bool),
+    String(String),
     Return(Box<Object>),
     Error(String),
     Function(Function),
@@ -37,6 +39,7 @@ impl Object {
             Object::Return(_) => ObjectType::Return,
             Object::Error(_) => ObjectType::Error,
             Object::Function(_) => ObjectType::Function,
+            Object::String(_) => ObjectType::String,
         }
     }
 
@@ -45,6 +48,7 @@ impl Object {
             Object::Null => "Null".to_string(),
             Object::Int(val) => val.to_string(),
             Object::Bool(val) => val.to_string(),
+            Object::String(s) => s.to_string(),
             Object::Return(val) => val.inspect(),
             Object::Error(val) => val.to_owned(),
             Object::Function(val) => {
@@ -86,6 +90,7 @@ impl ToString for ObjectType {
             ObjectType::Return => "RETURN".to_string(),
             ObjectType::Error => "ERROR".to_string(),
             ObjectType::Function => "FUNCTION".to_string(),
+            ObjectType::String => "STRING".to_owned(),
         }
     }
 }

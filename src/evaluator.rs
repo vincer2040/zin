@@ -53,6 +53,7 @@ fn eval_expression(e: &Expression, env: &mut Environment) -> Object {
     match e {
         Expression::Int(val) => Object::Int(*val),
         Expression::Boolean(val) => native_bool_to_boolean_object(*val),
+        Expression::String(s) => Object::String(s.to_string()),
         Expression::Ident(val) => match env.get(val) {
             Some(res) => res.to_owned(),
             None => {
@@ -329,6 +330,15 @@ mod test {
             _ => unreachable!(),
         };
         assert_eq!(e, exp);
+    }
+
+    fn test_string(got: &Object, exp: &str) {
+        assert!(matches!(got, Object::String(_)));
+        let s = match got {
+            Object::String(s) => s,
+            _ => unreachable!(),
+        };
+        assert_eq!(s, exp);
     }
 
     #[test]
@@ -717,5 +727,12 @@ mod test {
 
         let res = test_eval(input);
         test_int(&res, 4);
+    }
+
+    #[test]
+    fn test_strings() {
+        let input = "\"hello world\"";
+        let res = test_eval(input);
+        test_string(&res, "hello world");
     }
 }
