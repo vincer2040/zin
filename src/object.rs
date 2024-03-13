@@ -48,7 +48,7 @@ impl Object {
             Object::Null => "Null".to_string(),
             Object::Int(val) => val.to_string(),
             Object::Bool(val) => val.to_string(),
-            Object::String(s) => s.to_string(),
+            Object::String(s) => String::from("\"") + s + "\"",
             Object::Return(val) => val.inspect(),
             Object::Error(val) => val.to_owned(),
             Object::Function(val) => {
@@ -66,7 +66,7 @@ impl Object {
                 res += &val.body.to_string();
                 res += "\n}";
                 return res;
-            },
+            }
         }
     }
 
