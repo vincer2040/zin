@@ -9,9 +9,10 @@ pub enum ObjectType {
     Return,
     Error,
     Function,
+    Builtin,
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Function {
     pub name: String,
     pub params: Vec<String>,
@@ -19,7 +20,12 @@ pub struct Function {
     pub env: Environment,
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Builtin {
+    Len,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Object {
     Null,
     Int(i64),
@@ -28,6 +34,7 @@ pub enum Object {
     Return(Box<Object>),
     Error(String),
     Function(Function),
+    Builtin(Builtin),
 }
 
 impl Object {
@@ -40,6 +47,7 @@ impl Object {
             Object::Error(_) => ObjectType::Error,
             Object::Function(_) => ObjectType::Function,
             Object::String(_) => ObjectType::String,
+            Object::Builtin(_) => ObjectType::Builtin,
         }
     }
 
@@ -67,6 +75,7 @@ impl Object {
                 res += "\n}";
                 return res;
             }
+            Object::Builtin(_) => "builtin function".to_string(),
         }
     }
 
@@ -90,7 +99,8 @@ impl ToString for ObjectType {
             ObjectType::Return => "RETURN".to_string(),
             ObjectType::Error => "ERROR".to_string(),
             ObjectType::Function => "FUNCTION".to_string(),
-            ObjectType::String => "STRING".to_owned(),
+            ObjectType::String => "STRING".to_string(),
+            ObjectType::Builtin => "BUILTIN".to_string(),
         }
     }
 }

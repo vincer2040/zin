@@ -1,7 +1,7 @@
 use crate::object::Object;
 use std::collections::HashMap;
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Environment {
     store: HashMap<String, Object>,
     outer: Option<std::rc::Rc<Environment>>,
@@ -25,12 +25,10 @@ impl Environment {
     pub fn get(&self, name: &str) -> Option<&Object> {
         match self.store.get(name) {
             Some(o) => Some(o),
-            None => {
-                match &self.outer {
-                    Some(outer) => outer.get(name),
-                    None => None,
-                }
-            }
+            None => match &self.outer {
+                Some(outer) => outer.get(name),
+                None => None,
+            },
         }
     }
 

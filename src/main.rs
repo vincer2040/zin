@@ -6,6 +6,7 @@ use lexer::Lexer;
 use crate::{evaluator::eval, parser::Parser};
 
 mod ast;
+mod builtins;
 mod environment;
 mod evaluator;
 mod lexer;

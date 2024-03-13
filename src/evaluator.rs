@@ -2,8 +2,9 @@ use std::ops::Deref;
 
 use crate::{
     ast::{Ast, Block, Expression, IfExpression, InfixOperator, PrefixOperator, Statement},
+    builtins::len,
     environment::Environment,
-    object::{Function, Object, ObjectType},
+    object::{Builtin, Function, Object, ObjectType},
 };
 
 const TRUE: Object = Object::Bool(true);
@@ -58,7 +59,7 @@ fn eval_expression(e: &Expression, env: &mut Environment) -> Object {
             Some(res) => res.to_owned(),
             None => {
                 let err = format!("identifier not found: {}", val);
-                return Object::Error(err);
+                Object::Error(err)
             }
         },
         Expression::Prefix(prefix) => {
@@ -97,23 +98,19 @@ fn eval_expression(e: &Expression, env: &mut Environment) -> Object {
         Expression::Call(call) => {
             let func_obj = match env.get(&call.name) {
                 Some(o) => o.clone(),
-                None => {
-                    let err = format!("identifier not found: {}", call.name);
-                    return Object::Error(err);
-                }
+                None => match call.name.as_str() {
+                    "len" => Object::Builtin(Builtin::Len),
+                    _ => {
+                        let err = format!("identifier not found: {}", call.name);
+                        return Object::Error(err);
+                    }
+                },
             };
             let args = eval_expressions(&call.args, env);
             if args.len() == 1 && args[0].is_error() {
                 return (&args[0]).to_owned();
             }
-            let func = match func_obj {
-                Object::Function(f) => f,
-                _ => {
-                    let err = format!("not a function: {}", func_obj.get_type().to_string());
-                    return Object::Error(err);
-                }
-            };
-            return apply_function(func, args);
+            return apply_function(func_obj, args);
         }
     }
 }
@@ -200,10 +197,23 @@ fn eval_block(block: &Block, env: &mut Environment) -> Object {
     return res;
 }
 
-fn apply_function(func: Function, args: Vec<Object>) -> Object {
-    let mut extended = extend_function_env(&func, args);
-    let res = eval_block(&func.body, &mut extended);
-    return unwrap_return_value(res);
+fn apply_function(func_obj: Object, args: Vec<Object>) -> Object {
+    match func_obj {
+        Object::Function(func) => {
+            let mut extended = extend_function_env(&func, args);
+            let res = eval_block(&func.body, &mut extended);
+            return unwrap_return_value(res);
+        }
+        Object::Builtin(b) => match b {
+            Builtin::Len => {
+                return len(args);
+            }
+        },
+        _ => {
+            let err = format!("not a function: {}", func_obj.get_type().to_string());
+            return Object::Error(err);
+        }
+    }
 }
 
 fn unwrap_return_value(obj: Object) -> Object {
@@ -259,7 +269,12 @@ fn eval_int_infix(oper: &InfixOperator, left: i64, right: i64) -> Object {
 
 fn eval_string_infix(oper: &InfixOperator, left: &str, right: &str) -> Object {
     if *oper != InfixOperator::Plus {
-        let err = format!("unknown operator: {} {} {}", "STRING", oper.to_string(), "STRING");
+        let err = format!(
+            "unknown operator: {} {} {}",
+            "STRING",
+            oper.to_string(),
+            "STRING"
+        );
         return Object::Error(err);
     }
     let s = String::new() + left + right;
@@ -302,6 +317,11 @@ mod test {
     struct Test<T> {
         input: &'static str,
         expected: T,
+    }
+
+    enum LenTestExpected {
+        String(&'static str),
+        Int(i64),
     }
 
     fn check_errors(p: &Parser) {
@@ -765,5 +785,36 @@ mod test {
         let input = "\"hello\" + \" \" + \"world\"";
         let res = test_eval(input);
         test_string(&res, "hello world");
+    }
+
+    #[test]
+    fn test_builtin_len() {
+        let tests = [
+            Test {
+                input: "len(\"\")",
+                expected: LenTestExpected::Int(0),
+            },
+            Test {
+                input: "len(\"four\")",
+                expected: LenTestExpected::Int(4),
+            },
+            Test {
+                input: "len(1)",
+                expected: LenTestExpected::String("argument to 'len' not supported, got INTEGER"),
+            },
+            Test {
+                input: "len(\"one\", \"two\")",
+                expected: LenTestExpected::String("wrong number of arguments. got=2, want=1"),
+            },
+        ];
+
+        for (i, test) in tests.iter().enumerate() {
+            println!("{}", i);
+            let res = test_eval(&test.input);
+            match test.expected {
+                LenTestExpected::Int(i) => test_int(&res, i),
+                LenTestExpected::String(s) => test_error(&res, s),
+            }
+        }
     }
 }
