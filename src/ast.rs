@@ -76,6 +76,7 @@ pub enum Expression {
     Boolean(bool),
     Ident(String),
     Int(i64),
+    String(String),
     Prefix(Prefix),
     Infix(Infix),
     IfExpression(IfExpression),
@@ -126,6 +127,7 @@ impl ToString for Expression {
             }
             Expression::Ident(ident) => ident.to_string(),
             Expression::Int(i) => i.to_string(),
+            Expression::String(s) => s.to_string(),
             Expression::Prefix(prefix) => prefix.to_string(),
             Expression::Infix(infix) => infix.to_string(),
             Expression::Function(func) => func.to_string(),

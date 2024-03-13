@@ -2,8 +2,8 @@ use std::error::Error;
 
 use crate::{
     ast::{
-        Ast, Block, Call, Expression, FunctionExpression, IfExpression, Infix, InfixOperator, LetStatement,
-        Prefix, PrefixOperator, Statement,
+        Ast, Block, Call, Expression, FunctionExpression, IfExpression, Infix, InfixOperator,
+        LetStatement, Prefix, PrefixOperator, Statement,
     },
     lexer::Lexer,
     token::Token,
@@ -133,6 +133,7 @@ impl<'a> Parser<'a> {
                 let val: i64 = int.parse()?;
                 exp = Expression::Int(val);
             }
+            Token::String(s) => exp = Expression::String(s.to_string()),
             Token::True => exp = Expression::Boolean(true),
             Token::False => exp = Expression::Boolean(false),
             Token::Minus => exp = self.parse_prefix(PrefixOperator::Minus)?,
@@ -394,7 +395,9 @@ impl<'a> Parser<'a> {
 mod test {
 
     use crate::{
-        ast::{Expression, FunctionExpression, InfixOperator, LetStatement, PrefixOperator, Statement},
+        ast::{
+            Expression, FunctionExpression, InfixOperator, LetStatement, PrefixOperator, Statement,
+        },
         lexer::Lexer,
     };
 
@@ -582,6 +585,24 @@ mod test {
             let exp = exps[i];
             assert_int(&e, exp);
         }
+    }
+
+    #[test]
+    fn test_strings() {
+        let input = "\"hello world\"";
+        let l = Lexer::new(input.as_bytes());
+        let mut p = Parser::new(l);
+        let res = p.parse();
+        assert_eq!(res.statements.len(), 1);
+        let stmt = &res.statements[0];
+        let exp = assert_expression(&stmt);
+        assert!(matches!(exp, Expression::String(_)));
+        let s = match exp {
+            Expression::String(s) => s,
+            _ => unreachable!(),
+        };
+
+        assert_eq!(s, "hello world");
     }
 
     #[test]
