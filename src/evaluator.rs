@@ -137,6 +137,17 @@ fn eval_infix(oper: &InfixOperator, left: Object, right: Object) -> Object {
         };
         return eval_int_infix(oper, lval, rval);
     }
+    if left.get_type() == ObjectType::String && right.get_type() == ObjectType::String {
+        let lval = match left {
+            Object::String(s) => s,
+            _ => unreachable!(),
+        };
+        let rval = match right {
+            Object::String(s) => s,
+            _ => unreachable!(),
+        };
+        return eval_string_infix(oper, &lval, &rval);
+    }
     if left.get_type() != right.get_type() {
         let err = format!(
             "type mismatch: {} {} {}",
@@ -244,6 +255,15 @@ fn eval_int_infix(oper: &InfixOperator, left: i64, right: i64) -> Object {
         InfixOperator::Eq => native_bool_to_boolean_object(left == right),
         InfixOperator::NotEq => native_bool_to_boolean_object(left != right),
     }
+}
+
+fn eval_string_infix(oper: &InfixOperator, left: &str, right: &str) -> Object {
+    if *oper != InfixOperator::Plus {
+        let err = format!("unknown operator: {} {} {}", "STRING", oper.to_string(), "STRING");
+        return Object::Error(err);
+    }
+    let s = String::new() + left + right;
+    return Object::String(s);
 }
 
 fn eval_bang(right: Object) -> Object {
@@ -648,6 +668,10 @@ mod test {
                 input: "foobar",
                 expected: "identifier not found: foobar",
             },
+            Test {
+                input: "\"Hello\" - \"World\"",
+                expected: "unknown operator: STRING - STRING",
+            },
         ];
 
         for test in tests {
@@ -732,6 +756,13 @@ mod test {
     #[test]
     fn test_strings() {
         let input = "\"hello world\"";
+        let res = test_eval(input);
+        test_string(&res, "hello world");
+    }
+
+    #[test]
+    fn test_string_concatination() {
+        let input = "\"hello\" + \" \" + \"world\"";
         let res = test_eval(input);
         test_string(&res, "hello world");
     }
